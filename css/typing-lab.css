@@ -1,0 +1,312 @@
+/* ==========================================================================
+   WelcomePlace Canada - Interactive Keyboard Typing Lab
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   KEYBOARD TYPING LAB (Stamina / Keybr / TypingClub)
+   -------------------------------------------------------------------------- */
+.typing-lab-wrapper {
+  max-width: 950px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.typing-lesson-pills-bar {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.lesson-pill-btn {
+  white-space: nowrap;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lesson-pill-btn:hover {
+  background: var(--bg-page);
+  color: var(--text-color);
+  border-color: #94a3b8;
+}
+
+.lesson-pill-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+}
+
+/* Live Stats Bar */
+.typing-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  background: var(--bg-card);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-pill {
+  background: var(--bg-page);
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 1px solid var(--border-light);
+  color: var(--text-color);
+}
+
+.typing-finger-hint {
+  margin-left: auto;
+  font-size: 0.88rem;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  border: 1px solid #bfdbfe;
+}
+
+/* Progress Track */
+.typing-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.typing-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #10b981);
+  transition: width 0.15s ease;
+}
+
+/* Simulator Card & Prompt Display */
+.typing-simulator-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-md);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.typing-prompt-wrapper {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  transition: transform 0.1s ease;
+}
+
+.prompt-shake-error {
+  animation: shakePrompt 0.2s ease-in-out;
+  border: 2px solid #ef4444;
+}
+
+@keyframes shakePrompt {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.typing-prompt-inner {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  font-size: 1.4rem;
+  line-height: 1.8;
+  letter-spacing: 0.04em;
+  word-break: break-word;
+}
+
+.t-char {
+  transition: all 0.08s ease;
+}
+
+.t-char-correct {
+  color: #10b981;
+}
+
+.t-char-current {
+  color: #ffffff;
+  background: #2563eb;
+  padding: 2px 4px;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.7);
+  animation: currentBlink 1s infinite alternate;
+}
+
+@keyframes currentBlink {
+  from { opacity: 1; }
+  to { opacity: 0.7; }
+}
+
+.t-char-pending {
+  color: #64748b;
+}
+
+/* Virtual Keyboard Layout */
+.virtual-keyboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  user-select: none;
+}
+
+.v-keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #1e293b;
+  padding: 14px;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.v-keyboard-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.v-key {
+  height: 48px;
+  min-width: 44px;
+  padding: 0 8px;
+  background: #334155;
+  color: #f8fafc;
+  border-radius: 6px;
+  border-bottom: 3px solid #1e293b;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.1;
+  position: relative;
+  transition: all 0.08s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+
+/* Key Width Utilities */
+.v-key-wide-1-25 { min-width: 58px; }
+.v-key-wide-1-5  { min-width: 68px; }
+.v-key-wide-1-75 { min-width: 78px; }
+.v-key-wide-2    { min-width: 88px; }
+.v-key-wide-2-25 { min-width: 98px; }
+.v-key-wide-2-75 { min-width: 118px; }
+.v-key-spacebar  { min-width: 280px; flex-grow: 1; }
+
+/* Tactile Ridge Bumps for F and J */
+.tactile-bump {
+  display: block;
+  font-size: 1.1rem;
+  color: #94a3b8;
+  margin-top: -3px;
+  line-height: 0.5;
+}
+
+/* Target & Action Highlight States */
+.v-key-target {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-bottom-color: #1d4ed8 !important;
+  box-shadow: 0 0 16px rgba(37, 99, 235, 0.8), 0 3px 6px rgba(0,0,0,0.3) !important;
+  transform: translateY(-2px);
+  animation: keyTargetPulse 1.2s infinite alternate;
+}
+
+@keyframes keyTargetPulse {
+  from { transform: translateY(-2px) scale(1.02); }
+  to { transform: translateY(-4px) scale(1.08); }
+}
+
+.v-key-shift-required {
+  background: #f59e0b !important;
+  color: #ffffff !important;
+  border-bottom-color: #d97706 !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.8) !important;
+}
+
+.v-key-pressed {
+  transform: translateY(2px) !important;
+  border-bottom-width: 1px !important;
+  background: #475569 !important;
+}
+
+.v-key-wrong {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-bottom-color: #b91c1c !important;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.9) !important;
+}
+
+/* Finger Color Zones Subtle Bottom Border Accents */
+.f-lp { border-top: 3px solid #ec4899; }
+.f-lr { border-top: 3px solid #8b5cf6; }
+.f-lm { border-top: 3px solid #3b82f6; }
+.f-li { border-top: 3px solid #10b981; }
+.f-thumb { border-top: 3px solid #64748b; }
+.f-ri { border-top: 3px solid #14b8a6; }
+.f-rm { border-top: 3px solid #06b6d4; }
+.f-rr { border-top: 3px solid #a855f7; }
+.f-rp { border-top: 3px solid #f43f5e; }
+
+/* Finger Legend */
+.v-keyboard-legend {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-card);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.f-lp-bg { background: #ec4899; }
+.f-lr-bg { background: #8b5cf6; }
+.f-lm-bg { background: #3b82f6; }
+.f-li-bg { background: #10b981; }
+.f-thumb-bg { background: #64748b; }
+.f-ri-bg { background: #14b8a6; }
+.f-rm-bg { background: #06b6d4; }
+.f-rr-bg { background: #a855f7; }
+.f-rp-bg { background: #f43f5e; }
