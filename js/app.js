@@ -1230,6 +1230,43 @@ const App = {
     }
 
     return `
+      <!-- Google Sheets Cloud Sync Banner -->
+      <div class="google-sync-card" style="display: flex; align-items: center; justify-content: space-between; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="font-size: 1.6rem; background: #dcfce7; padding: 0.4rem 0.6rem; border-radius: 8px;">📊</div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <strong style="color: #166534; font-size: 0.98rem;">Google Sheets Live Sync Connected</strong>
+              <span style="background: #22c55e; color: white; font-size: 0.7rem; font-weight: 800; padding: 2px 7px; border-radius: 999px;">ACTIVE</span>
+            </div>
+            <div style="font-size: 0.82rem; color: #15803d; margin-top: 2px;">
+              Every student quiz & lab attempt automatically streams to your private Google Drive spreadsheet
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <button 
+            type="button" 
+            class="btn-secondary" 
+            style="padding: 0.45rem 0.95rem; font-size: 0.85rem; font-weight: 700; background: #ffffff; color: #166534; border-color: #86efac;" 
+            onclick="App.syncWithGoogleSheet()"
+            title="Fetch and merge latest student records from your Google Sheet"
+          >
+            <span id="sync-btn-text">🔄 Sync with Google Sheet</span>
+          </button>
+          <button 
+            type="button" 
+            class="btn-secondary" 
+            style="padding: 0.45rem 0.95rem; font-size: 0.85rem; font-weight: 700; background: #ffffff; color: #1e3a8a; border-color: #bfdbfe;" 
+            onclick="App.printAdminReport()"
+            title="Print this student report on A4 paper or save as PDF"
+          >
+            <span>🖨️ Print Report</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Comprehensive Metrics Toolbar -->
       <div style="background: var(--bg-card); padding: 1rem 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.85rem;">
@@ -1710,6 +1747,28 @@ const App = {
     const reportTxt = TxtReportGenerator.generateReportText(log);
     const fileName = TxtReportGenerator.generateFileName(log.studentName, log.moduleId);
     TxtReportGenerator.downloadFile(fileName, reportTxt);
+  },
+
+  async syncWithGoogleSheet() {
+    const btn = document.getElementById('sync-btn-text');
+    if (btn) btn.textContent = '⏳ Syncing...';
+    try {
+      const res = await StorageService.fetchMetricsFromGoogleSheet();
+      if (res && res.success) {
+        alert(`🎉 Google Sheet synchronized successfully!\nTotal records loaded: ${res.count} (${res.added} new added).`);
+        this.renderAdminDashboard();
+      } else {
+        alert('⚠️ Could not sync with Google Sheet: ' + (res?.error || 'Unknown error'));
+        if (btn) btn.textContent = '🔄 Sync with Google Sheet';
+      }
+    } catch (err) {
+      alert('⚠️ Error syncing with Google Sheet: ' + err.message);
+      if (btn) btn.textContent = '🔄 Sync with Google Sheet';
+    }
+  },
+
+  printAdminReport() {
+    window.print();
   },
 
   exportMasterAuditTxt() {

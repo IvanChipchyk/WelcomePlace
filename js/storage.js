@@ -315,6 +315,73 @@ const StorageService = {
     return this.getAllMetrics().filter(m => (m.studentName || '').trim().toLowerCase() === clean);
   },
 
+  GOOGLE_SHEET_URL_DEFAULT: 'https://script.google.com/macros/s/AKfycby6obZ7Pd_SmruIZVn29bUEDpMRLcm3-1WVFMY7bzjTCso8rrtDdmSDdjJcgcyHRC-y/exec',
+
+  getGoogleSheetUrl() {
+    return localStorage.getItem('wp_google_sheet_url') || this.GOOGLE_SHEET_URL_DEFAULT;
+  },
+
+  setGoogleSheetUrl(url) {
+    if (!url) {
+      localStorage.removeItem('wp_google_sheet_url');
+    } else {
+      localStorage.setItem('wp_google_sheet_url', url.trim());
+    }
+  },
+
+  async syncMetricToGoogleSheet(record) {
+    const url = this.getGoogleSheetUrl();
+    if (!url) return false;
+    try {
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(record),
+        mode: 'no-cors'
+      });
+      return true;
+    } catch (err) {
+      console.warn('Could not sync metric to Google Sheet:', err);
+      return false;
+    }
+  },
+
+  async fetchMetricsFromGoogleSheet() {
+    const url = this.getGoogleSheetUrl();
+    if (!url) return { success: false, error: 'No URL configured' };
+    try {
+      const res = await fetch(url, { redirect: 'follow' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const records = await res.json();
+      if (Array.isArray(records)) {
+        const local = this.getAllMetrics();
+        let addedCount = 0;
+        records.forEach(remote => {
+          if (!remote.studentName) return;
+          const exists = local.some(l => 
+            l.timestamp === remote.timestamp && 
+            l.studentName === remote.studentName &&
+            l.moduleId === remote.moduleId
+          );
+          if (!exists) {
+            local.push({
+              id: 'METRIC_SHEET_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+              ...remote
+            });
+            addedCount++;
+          }
+        });
+        local.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(local));
+        return { success: true, count: records.length, added: addedCount, records: local };
+      }
+      return { success: true, count: 0, added: 0, records: this.getAllMetrics() };
+    } catch (err) {
+      console.error('Failed to fetch from Google Sheet:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
   saveMetric(record) {
     const all = this.getAllMetrics();
     // Add unique ID and timestamp if not present
@@ -325,6 +392,10 @@ const StorageService = {
     };
     all.unshift(newRecord);
     localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(all));
+
+    // Automatically sync to Google Sheet in the background
+    this.syncMetricToGoogleSheet(newRecord);
+
     return newRecord;
   },
 
