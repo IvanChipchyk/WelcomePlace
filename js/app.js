@@ -908,6 +908,30 @@ const App = {
       </div>
     `).join('');
 
+    const downloadBannerHtml = textData.downloadUrl ? `
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe; padding: 1.15rem 1.35rem; border-radius: var(--radius-md); margin-bottom: 2rem;">
+        <div style="display: flex; align-items: center; gap: 0.85rem;">
+          <span style="font-size: 2.2rem;">📕</span>
+          <div>
+            <div style="font-size: 1.05rem; font-weight: 800; color: #1e3a8a;">Student Companion Handbook (PDF)</div>
+            <div style="font-size: 0.88rem; color: #1e40af; margin-top: 0.15rem;">
+              ${textData.downloadLabel || 'Download complete illustrated companion handbook with diagrams'}
+            </div>
+          </div>
+        </div>
+        <a 
+          href="${textData.downloadUrl}" 
+          download 
+          target="_blank" 
+          class="download-txt-cta" 
+          style="padding: 0.6rem 1.25rem; font-size: 0.9rem; text-decoration: none;"
+        >
+          <span>📥 Download PDF</span>
+          <span>➜</span>
+        </a>
+      </div>
+    ` : '';
+
     container.innerHTML = `
       <div class="presentation-card" style="padding: 2.25rem;">
         <span style="font-size: 0.8rem; font-weight: 700; color: var(--brand-blue); text-transform: uppercase;">
@@ -916,9 +940,11 @@ const App = {
         <h2 style="font-size: 1.65rem; font-weight: 800; margin: 0.5rem 0 0.75rem;">
           ${textData.heading}
         </h2>
-        <p style="font-size: 1.1rem; color: var(--text-main); background: #f8fafc; padding: 1rem 1.25rem; border-left: 4px solid var(--brand-blue); border-radius: 4px; margin-bottom: 2rem;">
+        <p style="font-size: 1.1rem; color: var(--text-main); background: #f8fafc; padding: 1rem 1.25rem; border-left: 4px solid var(--brand-blue); border-radius: 4px; margin-bottom: 1.75rem;">
           ${textData.summary}
         </p>
+
+        ${downloadBannerHtml}
 
         <div class="text-sections-container">
           ${sectionsHtml}
@@ -929,27 +955,56 @@ const App = {
 
   // Slot 3: Video Player
   renderVideoSlot(container, videoData) {
+    if (!videoData) return;
+    const hasVideo = Boolean(videoData.videoUrl);
+
     container.innerHTML = `
       <div class="media-section-card">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; margin-bottom: 1.25rem;">
           <div>
-            <h3>${videoData.title}</h3>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">${videoData.description}</p>
+            <h3 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 0.35rem;">${videoData.title}</h3>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">${videoData.description || ''}</p>
           </div>
-          <span style="font-size: 0.85rem; font-weight: 700; background: var(--surface-muted); padding: 4px 10px; border-radius: var(--radius-full);">
-            ⏱️ Duration: ${videoData.duration}
+          <span style="font-size: 0.85rem; font-weight: 700; background: var(--surface-muted); padding: 4px 12px; border-radius: var(--radius-full);">
+            ⏱️ Duration: ${videoData.duration || 'N/A'}
           </span>
         </div>
 
-        <div class="video-frame-container">
-          <div class="video-placeholder-icon" onclick="alert('Video slot ready: In this slot, the custom MP4 video or interactive player will play.')">
-            ▶
+        ${hasVideo ? `
+          <div class="video-player-wrapper" style="position: relative; border-radius: var(--radius-lg); overflow: hidden; background: #000; box-shadow: var(--shadow-md); margin-bottom: 1rem;">
+            <video 
+              controls 
+              preload="metadata" 
+              style="width: 100%; display: block; max-height: 520px; aspect-ratio: 16/9; background: #000;"
+            >
+              <source src="${videoData.videoUrl}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
           </div>
-          <p style="font-size: 1.1rem; font-weight: 700;">Click to Play Step-by-Step Demonstration</p>
-          <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.25rem;">
-            [Video Slot ready for local .mp4 files or embedded demonstrations]
-          </p>
-        </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: var(--surface-muted); padding: 0.85rem 1.25rem; border-radius: var(--radius-md);">
+            <div style="font-size: 0.88rem; color: var(--text-muted);">
+              ✅ High Quality Video Walkthrough • Step-by-Step Pace for Beginners
+            </div>
+            <a 
+              href="${videoData.videoUrl}" 
+              download 
+              class="btn-secondary" 
+              style="padding: 0.45rem 0.9rem; font-size: 0.85rem; text-decoration: none;"
+            >
+              <span>📥 Download MP4 Video</span>
+            </a>
+          </div>
+        ` : `
+          <div class="video-frame-container">
+            <div class="video-placeholder-icon" onclick="alert('Video slot ready: In this slot, the custom MP4 video or interactive player will play.')">
+              ▶
+            </div>
+            <p style="font-size: 1.1rem; font-weight: 700;">Click to Play Step-by-Step Demonstration</p>
+            <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.25rem;">
+              [Video Slot ready for local .mp4 files or embedded demonstrations]
+            </p>
+          </div>
+        `}
       </div>
     `;
   },
@@ -1006,13 +1061,54 @@ const App = {
     let tipsHtml = (teacherData.methodologyTips || []).map(t => `<li>${t}</li>`).join('');
     let exercisesHtml = (teacherData.classroomExercises || []).map(e => `<li>${e}</li>`).join('');
 
+    let downloadsHtml = '';
+    if (teacherData.downloads && teacherData.downloads.length > 0) {
+      downloadsHtml = `
+        <div style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.75rem; box-shadow: var(--shadow-sm);">
+          <h4 style="font-size: 1.05rem; font-weight: 800; color: #9a3412; margin-bottom: 0.75rem;">
+            📂 Download Classroom & Teaching Materials
+          </h4>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            ${teacherData.downloads.map(d => `
+              <a 
+                href="${d.file}" 
+                download 
+                class="btn-secondary" 
+                style="padding: 0.55rem 1rem; font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; background: #fff7ed; border-color: #fdba74; color: #9a3412;"
+              >
+                <span>${d.icon || '📄'}</span>
+                <span>${d.title}</span>
+              </a>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    let quotesHtml = '';
+    if (teacherData.verbatimScriptHighlights && teacherData.verbatimScriptHighlights.length > 0) {
+      quotesHtml = `
+        <div style="margin-bottom: 1.75rem;">
+          <h3 style="font-size: 1.2rem; font-weight: 800; color: #9a3412; margin-bottom: 0.75rem;">💬 Verbatim Teaching Script Highlights</h3>
+          <div style="display: grid; gap: 0.75rem;">
+            ${teacherData.verbatimScriptHighlights.map(q => `
+              <div style="background: #fffaf0; border-left: 3px solid #f97316; padding: 0.85rem 1rem; border-radius: 4px;">
+                <strong style="color: #c2410c; font-size: 0.88rem; display: block; margin-bottom: 0.25rem;">${q.block}</strong>
+                <p style="font-size: 0.95rem; font-style: italic; color: #431407; margin: 0;">${q.quote}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     container.innerHTML = `
       <div class="presentation-card">
         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
           <span style="font-size: 2rem;">🧑‍🏫</span>
           <div>
             <h2 style="font-size: 1.5rem; font-weight: 800; color: #9a3412;">Teacher & Instructor Guide</h2>
-            <p style="color: #7c2d12; font-size: 0.95rem;">Methodological and cultural facilitation tips for ESL learners</p>
+            <p style="color: #7c2d12; font-size: 0.95rem;">Methodological, psychological, and classroom facilitation guide for ESL/CLB learners</p>
           </div>
         </div>
 
@@ -1021,15 +1117,19 @@ const App = {
           <p style="color: #7c2d12; font-size: 0.98rem; line-height: 1.5;">${teacherData.learningGoal}</p>
         </div>
 
+        ${downloadsHtml}
+
         <div style="margin-bottom: 1.75rem;">
-          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.75rem;">💡 Key Pedagogical Tips</h3>
+          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.75rem;">💡 Key Pedagogical Rules & Techniques</h3>
           <ul class="teacher-tips-list" style="line-height: 1.6;">
             ${tipsHtml}
           </ul>
         </div>
 
+        ${quotesHtml}
+
         <div>
-          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.75rem;">📋 Recommended Classroom & Offline Exercises</h3>
+          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.75rem;">📋 Block-by-Block Class Schedule & Drills</h3>
           <ul class="teacher-tips-list" style="line-height: 1.6;">
             ${exercisesHtml}
           </ul>
