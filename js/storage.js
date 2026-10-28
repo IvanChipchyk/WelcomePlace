@@ -100,6 +100,9 @@ const StorageService = {
         list.push({ ...studentObj, isLoggedIn: false });
       }
       localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(list));
+      if (typeof SqliteService !== 'undefined') {
+        SqliteService.saveStudent(studentObj).catch(() => {});
+      }
       return list;
     } catch (e) {
       return [];
@@ -147,6 +150,11 @@ const StorageService = {
         }
       } catch (err) {}
 
+      // Also delete from Turso SQLite database
+      if (typeof SqliteService !== 'undefined') {
+        SqliteService.deleteStudent(clean).catch(() => {});
+      }
+
       return list;
     } catch (e) {
       return [];
@@ -154,10 +162,8 @@ const StorageService = {
   },
 
   // ==========================================
-  // File-Based JSON Database (Zero Server, Git Tracked)
+  // Turso SQLite Cloud Synchronization (Serverless SQLite)
   // ==========================================
-  DATABASE_FILE: 'data/database.json',
-
   LEGACY_STUDENT_NAMES: ['fatima', 'hassan', 'elena', 'david', 'test_student', 'student_01', 'fatima jama', 'hassan abdi'],
 
   getDeletedStudents() {
@@ -179,7 +185,7 @@ const StorageService = {
     }
   },
 
-  // Clean any obsolete seed students and phantom mock logs
+  // Clean any obsolete seed students and phantom mock logs from local cache
   cleanLegacyData() {
     try {
       const legacy = this.LEGACY_STUDENT_NAMES;
@@ -225,40 +231,57 @@ const StorageService = {
     } catch (e) {}
   },
 
-  async loadDatabaseFromFile() {
+  async syncWithSqlite() {
     this.cleanLegacyData();
+    if (typeof SqliteService === 'undefined') return false;
+
     try {
-      const res = await fetch(this.DATABASE_FILE + '?v=' + Date.now());
-      if (!res.ok) return false;
-      const db = await res.json();
-      if (!db) return false;
+      const [students, teachers, metrics] = await Promise.all([
+        SqliteService.fetchStudents(),
+        SqliteService.fetchTeachers(),
+        SqliteService.fetchMetrics()
+      ]);
 
-      const lastSync = localStorage.getItem('wp_db_synced_at');
-      const shouldSync = !lastSync || (db.updatedAt && db.updatedAt !== lastSync);
-
-      if (shouldSync) {
-        if (Array.isArray(db.students)) {
-          localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(db.students));
-        }
-        if (Array.isArray(db.teachers)) {
-          localStorage.setItem(STORAGE_KEYS.TEACHER_ACCOUNTS, JSON.stringify(db.teachers));
-        }
-        localStorage.setItem('wp_db_synced_at', db.updatedAt || new Date().toISOString());
+      if (Array.isArray(students)) {
+        // Filter out legacy names
+        const legacy = this.LEGACY_STUDENT_NAMES;
+        const deleted = this.getDeletedStudents();
+        const validStudents = students.filter(s => {
+          const clean = (s.nickname || '').toLowerCase().trim();
+          return !legacy.includes(clean) && !deleted.includes(clean);
+        });
+        localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(validStudents));
       }
 
-      return db;
+      if (Array.isArray(teachers) && teachers.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.TEACHER_ACCOUNTS, JSON.stringify(teachers));
+      }
+
+      if (Array.isArray(metrics)) {
+        const legacy = this.LEGACY_STUDENT_NAMES;
+        const deleted = this.getDeletedStudents();
+        const validMetrics = metrics.filter(m => {
+          const clean = (m.studentName || '').toLowerCase().trim();
+          return !legacy.includes(clean) && !deleted.includes(clean);
+        });
+        localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(validMetrics));
+      }
+
+      return true;
     } catch (err) {
-      console.warn('Could not load data/database.json:', err);
+      console.warn('Could not sync with Turso SQLite:', err);
       return false;
     }
   },
 
   exportDatabaseJson() {
     const db = {
-      version: '1.0.0',
-      updatedAt: new Date().toISOString(),
+      engine: 'Turso SQLite',
+      version: '2.0.0',
+      exportedAt: new Date().toISOString(),
       students: this.getRegisteredStudents(),
-      teachers: this.getTeacherAccounts()
+      teachers: this.getTeacherAccounts(),
+      metrics: this.getAllMetrics()
     };
     return JSON.stringify(db, null, 2);
   },
@@ -268,9 +291,15 @@ const StorageService = {
       const data = JSON.parse(jsonString);
       if (Array.isArray(data.students)) {
         localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(data.students));
+        if (typeof SqliteService !== 'undefined') {
+          data.students.forEach(s => SqliteService.saveStudent(s).catch(() => {}));
+        }
       }
       if (Array.isArray(data.teachers)) {
         localStorage.setItem(STORAGE_KEYS.TEACHER_ACCOUNTS, JSON.stringify(data.teachers));
+        if (typeof SqliteService !== 'undefined') {
+          data.teachers.forEach(t => SqliteService.saveTeacher(t).catch(() => {}));
+        }
       }
       return { success: true };
     } catch (err) {
@@ -339,6 +368,11 @@ const StorageService = {
 
     list.push(newTeacher);
     this.saveTeacherAccounts(list);
+
+    if (typeof SqliteService !== 'undefined') {
+      SqliteService.saveTeacher(newTeacher).catch(() => {});
+    }
+
     return { success: true, teacher: newTeacher };
   },
 
@@ -346,6 +380,10 @@ const StorageService = {
     let list = this.getTeacherAccounts();
     list = list.filter(t => t.id !== id);
     this.saveTeacherAccounts(list);
+
+    if (typeof SqliteService !== 'undefined') {
+      SqliteService.deleteTeacher(id).catch(() => {});
+    }
 
     const active = this.getActiveTeacher();
     if (active && active.id === id) {
@@ -469,81 +507,6 @@ const StorageService = {
     return this.getAllMetrics().filter(m => (m.studentName || '').trim().toLowerCase() === clean);
   },
 
-  GOOGLE_SHEET_URL_DEFAULT: 'https://script.google.com/macros/s/AKfycby6obZ7Pd_SmruIZVn29bUEDpMRLcm3-1WVFMY7bzjTCso8rrtDdmSDdjJcgcyHRC-y/exec',
-
-  getGoogleSheetUrl() {
-    return localStorage.getItem('wp_google_sheet_url') || this.GOOGLE_SHEET_URL_DEFAULT;
-  },
-
-  setGoogleSheetUrl(url) {
-    if (!url) {
-      localStorage.removeItem('wp_google_sheet_url');
-    } else {
-      localStorage.setItem('wp_google_sheet_url', url.trim());
-    }
-  },
-
-  async syncMetricToGoogleSheet(record) {
-    const url = this.getGoogleSheetUrl();
-    if (!url) return false;
-    try {
-      await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(record),
-        mode: 'no-cors'
-      });
-      return true;
-    } catch (err) {
-      console.warn('Could not sync metric to Google Sheet:', err);
-      return false;
-    }
-  },
-
-  async fetchMetricsFromGoogleSheet() {
-    const url = this.getGoogleSheetUrl();
-    if (!url) return { success: false, error: 'No URL configured' };
-    try {
-      const res = await fetch(url, { redirect: 'follow' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const records = await res.json();
-      if (Array.isArray(records)) {
-        const legacy = this.LEGACY_STUDENT_NAMES || [];
-        const deleted = this.getDeletedStudents();
-        const local = this.getAllMetrics();
-        let addedCount = 0;
-
-        records.forEach(remote => {
-          if (!remote || !remote.studentName) return;
-          if (remote.moduleId === 'SYSTEM_ACCOUNTS') return; // Do not display internal sync records in quiz logs
-          const rName = (remote.studentName || '').toLowerCase().trim();
-          if (legacy.includes(rName)) return; // Skip legacy test students (Fatima, Test_Student, etc.)
-          if (deleted.includes(rName)) return; // Skip deleted students
-
-          const exists = local.some(l => 
-            l.timestamp === remote.timestamp && 
-            (l.studentName || '').toLowerCase().trim() === rName &&
-            l.moduleId === remote.moduleId
-          );
-          if (!exists) {
-            local.push({
-              id: 'METRIC_SHEET_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-              ...remote
-            });
-            addedCount++;
-          }
-        });
-        local.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(local));
-        return { success: true, count: records.length, added: addedCount, records: local };
-      }
-      return { success: true, count: 0, added: 0, records: this.getAllMetrics() };
-    } catch (err) {
-      console.error('Failed to fetch from Google Sheet:', err);
-      return { success: false, error: err.message };
-    }
-  },
-
   saveMetric(record) {
     const all = this.getAllMetrics();
     // Add unique ID and timestamp if not present
@@ -555,8 +518,12 @@ const StorageService = {
     all.unshift(newRecord);
     localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(all));
 
-    // Automatically sync to Google Sheet in the background
-    this.syncMetricToGoogleSheet(newRecord);
+    // Automatically sync to Turso SQLite database
+    if (typeof SqliteService !== 'undefined') {
+      SqliteService.saveMetric(newRecord).catch(err => {
+        console.warn('Could not save metric to SQLite:', err);
+      });
+    }
 
     return newRecord;
   },
@@ -565,11 +532,21 @@ const StorageService = {
     let all = this.getAllMetrics();
     all = all.filter(item => item.id !== id);
     localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(all));
+
+    // Delete from Turso SQLite database
+    if (typeof SqliteService !== 'undefined') {
+      SqliteService.deleteMetric(id).catch(() => {});
+    }
     return all;
   },
 
   clearAllMetrics() {
     localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify([]));
+
+    // Clear all in Turso SQLite database
+    if (typeof SqliteService !== 'undefined') {
+      SqliteService.clearAllMetrics().catch(() => {});
+    }
   }
 };
 

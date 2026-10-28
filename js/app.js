@@ -29,9 +29,9 @@ const App = {
     this.updateRoleUI();
     this.render();
 
-    // 1. Load file-based database (data/database.json) from repo (instant, zero server)
-    const dbLoaded = await StorageService.loadDatabaseFromFile();
-    if (dbLoaded) {
+    // 1. Synchronize with Turso SQLite cloud database
+    const sqliteSynced = await StorageService.syncWithSqlite();
+    if (sqliteSynced) {
       this.render();
     }
   },
@@ -1344,17 +1344,17 @@ const App = {
     }
 
     return `
-      <!-- Google Sheets Cloud Sync Banner -->
+      <!-- Turso SQLite Cloud Database Banner -->
       <div class="google-sync-card" style="display: flex; align-items: center; justify-content: space-between; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <div style="font-size: 1.6rem; background: #dcfce7; padding: 0.4rem 0.6rem; border-radius: 8px;">📊</div>
+          <div style="font-size: 1.6rem; background: #dcfce7; padding: 0.4rem 0.6rem; border-radius: 8px;">🗄️</div>
           <div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <strong style="color: #166534; font-size: 0.98rem;">Google Sheets Live Sync Connected</strong>
-              <span style="background: #22c55e; color: white; font-size: 0.7rem; font-weight: 800; padding: 2px 7px; border-radius: 999px;">ACTIVE</span>
+              <strong style="color: #166534; font-size: 0.98rem;">Turso SQLite Database Connected</strong>
+              <span style="background: #22c55e; color: white; font-size: 0.7rem; font-weight: 800; padding: 2px 7px; border-radius: 999px;">LIVE SQLITE</span>
             </div>
             <div style="font-size: 0.82rem; color: #15803d; margin-top: 2px;">
-              Every student quiz & lab attempt automatically streams to your private Google Drive spreadsheet
+              Serverless SQLite database active (Montreal, Canada) • Real-time synchronization across all devices
             </div>
           </div>
         </div>
@@ -1364,10 +1364,10 @@ const App = {
             type="button" 
             class="btn-secondary" 
             style="padding: 0.45rem 0.95rem; font-size: 0.85rem; font-weight: 700; background: #ffffff; color: #166534; border-color: #86efac;" 
-            onclick="App.syncWithGoogleSheet()"
-            title="Fetch and merge latest student records from your Google Sheet"
+            onclick="App.syncWithSqlite()"
+            title="Fetch latest student records and metrics directly from Turso SQLite"
           >
-            <span id="sync-btn-text">🔄 Sync with Google Sheet</span>
+            <span id="sync-btn-text">🔄 Refresh from SQLite</span>
           </button>
           <button 
             type="button" 
@@ -1706,16 +1706,16 @@ const App = {
             class="btn-secondary" 
             style="padding: 0.6rem 1.1rem; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem; background: #f0fdf4; border-color: #86efac; color: #15803d;"
             onclick="App.downloadDatabaseJson()"
-            title="Download database.json for project repository"
+            title="Export full database backup as JSON"
           >
-            <span>💾 Export database.json</span>
+            <span>💾 Backup SQLite (.json)</span>
           </button>
           <label 
             class="btn-secondary" 
             style="padding: 0.6rem 1.1rem; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;"
-            title="Import updated database.json file"
+            title="Import and restore database backup JSON"
           >
-            <span>📂 Import database.json</span>
+            <span>📂 Restore SQLite (.json)</span>
             <input type="file" accept=".json" style="display: none;" onchange="App.handleImportDatabase(event)" />
           </label>
           <button 
@@ -1894,7 +1894,7 @@ const App = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'database.json';
+    a.download = `welcomeplace_sqlite_backup_${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1910,10 +1910,10 @@ const App = {
       const content = e.target.result;
       const res = StorageService.importDatabaseJson(content);
       if (res.success) {
-        alert('🎉 database.json imported successfully! Student and teacher lists updated.');
+        alert('🎉 SQLite backup restored successfully! Database updated.');
         this.renderAdminDashboard();
       } else {
-        alert('⚠️ Error importing JSON file: ' + res.error);
+        alert('⚠️ Error importing backup file: ' + res.error);
       }
     };
     reader.readAsText(file);
@@ -1930,21 +1930,24 @@ const App = {
     TxtReportGenerator.downloadFile(fileName, reportTxt);
   },
 
-  async syncWithGoogleSheet() {
+  async syncWithSqlite() {
     const btn = document.getElementById('sync-btn-text');
-    if (btn) btn.textContent = '⏳ Syncing...';
+    if (btn) btn.textContent = '⏳ Syncing SQLite...';
     try {
-      const res = await StorageService.fetchMetricsFromGoogleSheet();
-      if (res && res.success) {
-        alert(`🎉 Google Sheet synchronized successfully!\nTotal records loaded: ${res.count} (${res.added} new added).`);
+      const ok = await StorageService.syncWithSqlite();
+      if (ok) {
+        if (btn) btn.textContent = '✅ SQLite Synced!';
         this.renderAdminDashboard();
+        setTimeout(() => {
+          if (btn) btn.textContent = '🔄 Refresh from SQLite';
+        }, 2000);
       } else {
-        alert('⚠️ Could not sync with Google Sheet: ' + (res?.error || 'Unknown error'));
-        if (btn) btn.textContent = '🔄 Sync with Google Sheet';
+        alert('⚠️ Could not connect to Turso SQLite. Please check your internet connection.');
+        if (btn) btn.textContent = '🔄 Refresh from SQLite';
       }
     } catch (err) {
-      alert('⚠️ Error syncing with Google Sheet: ' + err.message);
-      if (btn) btn.textContent = '🔄 Sync with Google Sheet';
+      alert('⚠️ SQLite Sync Error: ' + err.message);
+      if (btn) btn.textContent = '🔄 Refresh from SQLite';
     }
   },
 
