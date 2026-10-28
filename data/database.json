@@ -1,0 +1,30 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-10-28T02:00:00.000Z",
+  "students": [
+    {
+      "nickname": "Test_Student",
+      "password": "123",
+      "avatarId": "avatar_boy_caucasian",
+      "createdAt": "2026-10-28T01:13:00.000Z"
+    }
+  ],
+  "teachers": [
+    {
+      "id": "TCH_1",
+      "name": "Sarah Jenkins",
+      "username": "sarah.j",
+      "password": "teacher123",
+      "specialization": "ESL Digital Literacy Specialist",
+      "createdAt": "2026-10-27T14:00:00.000Z"
+    },
+    {
+      "id": "TCH_2",
+      "name": "Marc Tremblay",
+      "username": "marc.t",
+      "password": "teacher456",
+      "specialization": "Computer Skills & Canadian Integration",
+      "createdAt": "2026-10-27T14:00:00.000Z"
+    }
+  ]
+}

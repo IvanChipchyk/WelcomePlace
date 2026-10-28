@@ -88,14 +88,13 @@ const StorageService = {
   addStudentToRegistry(studentObj) {
     try {
       let list = this.getRegisteredStudents();
-      const idx = list.findIndex(s => s.nickname.toLowerCase() === studentObj.nickname.toLowerCase());
+      const idx = list.findIndex(s => s.nickname.toLowerCase() === (studentObj.nickname || '').toLowerCase());
       if (idx >= 0) {
         list[idx] = { ...list[idx], ...studentObj, isLoggedIn: false };
       } else {
         list.push({ ...studentObj, isLoggedIn: false });
       }
       localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(list));
-      this.syncStudentsToCloud(list);
     } catch (e) {}
   },
 
@@ -109,7 +108,6 @@ const StorageService = {
         list.push({ ...studentObj, isLoggedIn: false });
       }
       localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(list));
-      this.syncStudentsToCloud(list);
       return list;
     } catch (e) {
       return [];
@@ -121,7 +119,15 @@ const StorageService = {
       const data = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
       if (data !== null) return JSON.parse(data);
     } catch (e) {}
-    return [];
+    // Initial fallback from project data/database.json
+    return [
+      {
+        nickname: 'Test_Student',
+        password: '123',
+        avatarId: 'avatar_boy_caucasian',
+        createdAt: '2026-10-28T01:13:00.000Z'
+      }
+    ];
   },
 
   logoutStudent() {
@@ -143,28 +149,66 @@ const StorageService = {
       if (active && active.nickname.toLowerCase() === (nickname || '').toLowerCase()) {
         this.logoutStudent();
       }
-      this.syncStudentsToCloud(list);
       return list;
     } catch (e) {
       return [];
     }
   },
 
-  async syncStudentsToCloud(studentsList = null) {
-    const list = studentsList !== null ? studentsList : this.getRegisteredStudents();
-    const record = {
-      studentName: '__SYSTEM_STUDENTS_SYNC__',
-      avatarId: 'system',
-      moduleId: 'SYSTEM_ACCOUNTS',
-      moduleTitle: 'Registered Student Accounts',
-      scorePercent: 0,
-      correctCount: 0,
-      totalQuestions: 0,
-      durationSeconds: 0,
-      status: 'SYNC',
-      details: list
+  // ==========================================
+  // File-Based JSON Database (Zero Server, Git Tracked)
+  // ==========================================
+  DATABASE_FILE: 'data/database.json',
+
+  async loadDatabaseFromFile() {
+    try {
+      const res = await fetch(this.DATABASE_FILE + '?v=' + Date.now());
+      if (!res.ok) return false;
+      const db = await res.json();
+      if (!db) return false;
+
+      // Initialize students if not already customized in localStorage
+      const localStudents = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
+      if (localStudents === null && Array.isArray(db.students)) {
+        localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(db.students));
+      }
+
+      // Initialize teachers if not already customized in localStorage
+      const localTeachers = localStorage.getItem(STORAGE_KEYS.TEACHER_ACCOUNTS);
+      if (localTeachers === null && Array.isArray(db.teachers)) {
+        localStorage.setItem(STORAGE_KEYS.TEACHER_ACCOUNTS, JSON.stringify(db.teachers));
+      }
+
+      return db;
+    } catch (err) {
+      console.warn('Could not load data/database.json:', err);
+      return false;
+    }
+  },
+
+  exportDatabaseJson() {
+    const db = {
+      version: '1.0.0',
+      updatedAt: new Date().toISOString(),
+      students: this.getRegisteredStudents(),
+      teachers: this.getTeacherAccounts()
     };
-    return this.syncMetricToGoogleSheet(record);
+    return JSON.stringify(db, null, 2);
+  },
+
+  importDatabaseJson(jsonString) {
+    try {
+      const data = JSON.parse(jsonString);
+      if (Array.isArray(data.students)) {
+        localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(data.students));
+      }
+      if (Array.isArray(data.teachers)) {
+        localStorage.setItem(STORAGE_KEYS.TEACHER_ACCOUNTS, JSON.stringify(data.teachers));
+      }
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   },
 
   // ==========================================

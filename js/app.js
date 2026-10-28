@@ -19,7 +19,7 @@ const App = {
   adminMetricFilterStatus: 'ALL',
   adminMetricSearchQuery: '',
 
-  init() {
+  async init() {
     this.currentRole = StorageService.getCurrentRole();
     const student = StorageService.getActiveStudent();
     if (student && student.avatarId) {
@@ -29,12 +29,14 @@ const App = {
     this.updateRoleUI();
     this.render();
 
-    // Auto-sync with cloud (Google Sheets) in background to load students & metrics
-    StorageService.fetchMetricsFromGoogleSheet().then(res => {
-      if (res && res.success) {
-        this.render();
-      }
-    }).catch(() => {});
+    // 1. Load file-based database (data/database.json) from repo (instant, zero server)
+    const dbLoaded = await StorageService.loadDatabaseFromFile();
+    if (dbLoaded) {
+      this.render();
+    }
+
+    // 2. Background fetch of quiz metrics backup from Google Sheets
+    StorageService.fetchMetricsFromGoogleSheet().catch(() => {});
   },
 
   setupEventListeners() {
@@ -1697,19 +1699,27 @@ const App = {
           <button 
             type="button"
             class="btn-secondary" 
-            style="padding: 0.6rem 1.1rem; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem;"
-            onclick="App.syncWithGoogleSheet()"
-            title="Fetch latest student accounts and metrics from Google Sheet"
+            style="padding: 0.6rem 1.1rem; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem; background: #f0fdf4; border-color: #86efac; color: #15803d;"
+            onclick="App.downloadDatabaseJson()"
+            title="Download database.json for project repository"
           >
-            <span>🔄 Sync with Cloud</span>
+            <span>💾 Export database.json</span>
           </button>
+          <label 
+            class="btn-secondary" 
+            style="padding: 0.6rem 1.1rem; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;"
+            title="Import updated database.json file"
+          >
+            <span>📂 Import database.json</span>
+            <input type="file" accept=".json" style="display: none;" onchange="App.handleImportDatabase(event)" />
+          </label>
           <button 
             type="button"
             class="download-txt-cta" 
-            style="max-width: 260px; padding: 0.6rem 1.15rem;"
+            style="max-width: 240px; padding: 0.6rem 1.15rem;"
             onclick="App.openCreateStudentModal()"
           >
-            <span>➕ Create Student Profile</span>
+            <span>➕ Create Student</span>
           </button>
         </div>
       </div>
@@ -1871,6 +1881,38 @@ const App = {
       StorageService.deleteStudentAccount(nick);
       this.renderAdminDashboard();
     }
+  },
+
+  downloadDatabaseJson() {
+    const jsonStr = StorageService.exportDatabaseJson();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'database.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  handleImportDatabase(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      const res = StorageService.importDatabaseJson(content);
+      if (res.success) {
+        alert('🎉 database.json imported successfully! Student and teacher lists updated.');
+        this.renderAdminDashboard();
+      } else {
+        alert('⚠️ Error importing JSON file: ' + res.error);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
   },
 
   downloadSingleTxt(logId) {
