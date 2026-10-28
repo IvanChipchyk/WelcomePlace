@@ -34,9 +34,6 @@ const App = {
     if (dbLoaded) {
       this.render();
     }
-
-    // 2. Background fetch of quiz metrics backup from Google Sheets
-    StorageService.fetchMetricsFromGoogleSheet().catch(() => {});
   },
 
   setupEventListeners() {

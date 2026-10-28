@@ -131,6 +131,9 @@ const StorageService = {
         this.logoutStudent();
       }
 
+      // Mark student as permanently deleted
+      this.markStudentDeleted(clean);
+
       // Also purge evaluation metrics for this deleted student
       try {
         const data = localStorage.getItem(STORAGE_KEYS.METRICS_LOGS);
@@ -155,16 +158,42 @@ const StorageService = {
   // ==========================================
   DATABASE_FILE: 'data/database.json',
 
+  LEGACY_STUDENT_NAMES: ['fatima', 'hassan', 'elena', 'david', 'test_student', 'student_01', 'fatima jama', 'hassan abdi'],
+
+  getDeletedStudents() {
+    try {
+      const data = localStorage.getItem('wp_deleted_students');
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  markStudentDeleted(nickname) {
+    if (!nickname) return;
+    const clean = nickname.toLowerCase().trim();
+    const list = this.getDeletedStudents();
+    if (!list.includes(clean)) {
+      list.push(clean);
+      localStorage.setItem('wp_deleted_students', JSON.stringify(list));
+    }
+  },
+
   // Clean any obsolete seed students and phantom mock logs
   cleanLegacyData() {
     try {
-      const legacyNames = ['fatima', 'hassan', 'elena', 'david', 'test_student', 'student_01', 'fatima jama', 'hassan abdi'];
+      const legacy = this.LEGACY_STUDENT_NAMES;
+      const deleted = this.getDeletedStudents();
+      const shouldBlock = (name) => {
+        const clean = (name || '').toLowerCase().trim();
+        return legacy.includes(clean) || deleted.includes(clean);
+      };
       
       const localStudents = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
       if (localStudents) {
         const list = JSON.parse(localStudents);
         if (Array.isArray(list)) {
-          const cleaned = list.filter(s => !legacyNames.includes((s.nickname || '').toLowerCase().trim()));
+          const cleaned = list.filter(s => !shouldBlock(s.nickname));
           if (cleaned.length !== list.length) {
             localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(cleaned));
           }
@@ -174,7 +203,7 @@ const StorageService = {
       const active = localStorage.getItem(STORAGE_KEYS.ACTIVE_STUDENT);
       if (active) {
         const parsed = JSON.parse(active);
-        if (parsed && legacyNames.includes((parsed.nickname || '').toLowerCase().trim())) {
+        if (parsed && shouldBlock(parsed.nickname)) {
           localStorage.removeItem(STORAGE_KEYS.ACTIVE_STUDENT);
         }
       }
@@ -184,8 +213,9 @@ const StorageService = {
         const list = JSON.parse(metrics);
         if (Array.isArray(list)) {
           const cleaned = list.filter(m => {
-            const name = (m.studentName || '').toLowerCase().trim();
-            return !legacyNames.includes(name) && !String(m.id || '').startsWith('METRIC_SEED_');
+            if (!m) return false;
+            if (String(m.id || '').startsWith('METRIC_SEED_')) return false;
+            return !shouldBlock(m.studentName);
           });
           if (cleaned.length !== list.length) {
             localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(cleaned));
@@ -417,7 +447,16 @@ const StorageService = {
       if (!data) return [];
       const parsed = JSON.parse(data);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter(m => m && !String(m.id || '').startsWith('METRIC_SEED_') && m.studentName !== 'Fatima Jama' && m.studentName !== 'Hassan Abdi');
+      const legacy = this.LEGACY_STUDENT_NAMES || [];
+      const deleted = this.getDeletedStudents();
+      return parsed.filter(m => {
+        if (!m) return false;
+        if (String(m.id || '').startsWith('METRIC_SEED_')) return false;
+        const name = (m.studentName || '').toLowerCase().trim();
+        if (legacy.includes(name)) return false;
+        if (deleted.includes(name)) return false;
+        return true;
+      });
     } catch (e) {
       console.error('Failed to load metrics from storage', e);
       return [];
@@ -469,26 +508,21 @@ const StorageService = {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const records = await res.json();
       if (Array.isArray(records)) {
-        // 1. Synchronize registered students from cloud if available
-        const studentSyncRecords = records
-          .filter(r => r.moduleId === 'SYSTEM_ACCOUNTS' && Array.isArray(r.details))
-          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-        if (studentSyncRecords.length > 0) {
-          const latestStudents = studentSyncRecords[0].details;
-          localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(latestStudents));
-        }
-
-        // 2. Synchronize metrics (excluding internal SYSTEM_ACCOUNTS sync records)
+        const legacy = this.LEGACY_STUDENT_NAMES || [];
+        const deleted = this.getDeletedStudents();
         const local = this.getAllMetrics();
         let addedCount = 0;
+
         records.forEach(remote => {
-          if (!remote.studentName) return;
+          if (!remote || !remote.studentName) return;
           if (remote.moduleId === 'SYSTEM_ACCOUNTS') return; // Do not display internal sync records in quiz logs
+          const rName = (remote.studentName || '').toLowerCase().trim();
+          if (legacy.includes(rName)) return; // Skip legacy test students (Fatima, Test_Student, etc.)
+          if (deleted.includes(rName)) return; // Skip deleted students
 
           const exists = local.some(l => 
             l.timestamp === remote.timestamp && 
-            l.studentName === remote.studentName &&
+            (l.studentName || '').toLowerCase().trim() === rName &&
             l.moduleId === remote.moduleId
           );
           if (!exists) {
