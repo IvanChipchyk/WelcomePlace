@@ -87,6 +87,13 @@ const StorageService = {
         list.push({ ...studentObj, isLoggedIn: false });
       }
       localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(list));
+
+      // Persist student to Turso SQLite cloud database
+      if (typeof SqliteService !== 'undefined') {
+        SqliteService.saveStudent(studentObj).catch(err => {
+          console.warn('Failed to save student to Turso SQLite:', err);
+        });
+      }
     } catch (e) {}
   },
 
@@ -134,9 +141,6 @@ const StorageService = {
         this.logoutStudent();
       }
 
-      // Mark student as permanently deleted
-      this.markStudentDeleted(clean);
-
       // Also purge evaluation metrics for this deleted student
       try {
         const data = localStorage.getItem(STORAGE_KEYS.METRICS_LOGS);
@@ -164,75 +168,7 @@ const StorageService = {
   // ==========================================
   // Turso SQLite Cloud Synchronization (Serverless SQLite)
   // ==========================================
-  LEGACY_STUDENT_NAMES: ['fatima', 'hassan', 'elena', 'david', 'test_student', 'student_01', 'fatima jama', 'hassan abdi'],
-
-  getDeletedStudents() {
-    try {
-      const data = localStorage.getItem('wp_deleted_students');
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      return [];
-    }
-  },
-
-  markStudentDeleted(nickname) {
-    if (!nickname) return;
-    const clean = nickname.toLowerCase().trim();
-    const list = this.getDeletedStudents();
-    if (!list.includes(clean)) {
-      list.push(clean);
-      localStorage.setItem('wp_deleted_students', JSON.stringify(list));
-    }
-  },
-
-  // Clean any obsolete seed students and phantom mock logs from local cache
-  cleanLegacyData() {
-    try {
-      const legacy = this.LEGACY_STUDENT_NAMES;
-      const deleted = this.getDeletedStudents();
-      const shouldBlock = (name) => {
-        const clean = (name || '').toLowerCase().trim();
-        return legacy.includes(clean) || deleted.includes(clean);
-      };
-      
-      const localStudents = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
-      if (localStudents) {
-        const list = JSON.parse(localStudents);
-        if (Array.isArray(list)) {
-          const cleaned = list.filter(s => !shouldBlock(s.nickname));
-          if (cleaned.length !== list.length) {
-            localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(cleaned));
-          }
-        }
-      }
-
-      const active = localStorage.getItem(STORAGE_KEYS.ACTIVE_STUDENT);
-      if (active) {
-        const parsed = JSON.parse(active);
-        if (parsed && shouldBlock(parsed.nickname)) {
-          localStorage.removeItem(STORAGE_KEYS.ACTIVE_STUDENT);
-        }
-      }
-
-      const metrics = localStorage.getItem(STORAGE_KEYS.METRICS_LOGS);
-      if (metrics) {
-        const list = JSON.parse(metrics);
-        if (Array.isArray(list)) {
-          const cleaned = list.filter(m => {
-            if (!m) return false;
-            if (String(m.id || '').startsWith('METRIC_SEED_')) return false;
-            return !shouldBlock(m.studentName);
-          });
-          if (cleaned.length !== list.length) {
-            localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(cleaned));
-          }
-        }
-      }
-    } catch (e) {}
-  },
-
   async syncWithSqlite() {
-    this.cleanLegacyData();
     if (typeof SqliteService === 'undefined') return false;
 
     try {
@@ -243,14 +179,20 @@ const StorageService = {
       ]);
 
       if (Array.isArray(students)) {
-        // Filter out legacy names
-        const legacy = this.LEGACY_STUDENT_NAMES;
-        const deleted = this.getDeletedStudents();
-        const validStudents = students.filter(s => {
-          const clean = (s.nickname || '').toLowerCase().trim();
-          return !legacy.includes(clean) && !deleted.includes(clean);
-        });
-        localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(validStudents));
+        localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(students));
+        
+        // Keep active student profile in sync if currently logged in
+        const active = this.getActiveStudent();
+        if (active && active.isLoggedIn) {
+          const match = students.find(s => s.nickname.toLowerCase() === active.nickname.toLowerCase());
+          if (match) {
+            localStorage.setItem(STORAGE_KEYS.ACTIVE_STUDENT, JSON.stringify({
+              ...active,
+              avatarId: match.avatarId || active.avatarId,
+              password: match.password || active.password
+            }));
+          }
+        }
       }
 
       if (Array.isArray(teachers) && teachers.length > 0) {
@@ -258,13 +200,7 @@ const StorageService = {
       }
 
       if (Array.isArray(metrics)) {
-        const legacy = this.LEGACY_STUDENT_NAMES;
-        const deleted = this.getDeletedStudents();
-        const validMetrics = metrics.filter(m => {
-          const clean = (m.studentName || '').toLowerCase().trim();
-          return !legacy.includes(clean) && !deleted.includes(clean);
-        });
-        localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(validMetrics));
+        localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(metrics));
       }
 
       return true;
@@ -485,16 +421,7 @@ const StorageService = {
       if (!data) return [];
       const parsed = JSON.parse(data);
       if (!Array.isArray(parsed)) return [];
-      const legacy = this.LEGACY_STUDENT_NAMES || [];
-      const deleted = this.getDeletedStudents();
-      return parsed.filter(m => {
-        if (!m) return false;
-        if (String(m.id || '').startsWith('METRIC_SEED_')) return false;
-        const name = (m.studentName || '').toLowerCase().trim();
-        if (legacy.includes(name)) return false;
-        if (deleted.includes(name)) return false;
-        return true;
-      });
+      return parsed.filter(m => m && !String(m.id || '').startsWith('METRIC_SEED_'));
     } catch (e) {
       console.error('Failed to load metrics from storage', e);
       return [];
