@@ -1,14 +1,7 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-10-28T02:00:00.000Z",
-  "students": [
-    {
-      "nickname": "Test_Student",
-      "password": "123",
-      "avatarId": "avatar_boy_caucasian",
-      "createdAt": "2026-10-28T01:13:00.000Z"
-    }
-  ],
+  "updatedAt": "2026-10-28T02:10:00.000Z",
+  "students": [],
   "teachers": [
     {
       "id": "TCH_1",

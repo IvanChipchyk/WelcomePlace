@@ -24,15 +24,7 @@ const StorageService = {
         if (parsed && parsed.nickname) return parsed;
       }
     } catch (e) {}
-
-    // Initial default student if first launch
-    const initial = {
-      nickname: 'Fatima',
-      password: '123',
-      avatarId: 'avatar_hijab_teal',
-      isLoggedIn: true
-    };
-    return initial;
+    return null;
   },
 
   isStudentLoggedIn() {
@@ -119,36 +111,39 @@ const StorageService = {
       const data = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
       if (data !== null) return JSON.parse(data);
     } catch (e) {}
-    // Initial fallback from project data/database.json
-    return [
-      {
-        nickname: 'Test_Student',
-        password: '123',
-        avatarId: 'avatar_boy_caucasian',
-        createdAt: '2026-10-28T01:13:00.000Z'
-      }
-    ];
+    return [];
   },
 
   logoutStudent() {
-    const student = this.getActiveStudent();
-    if (student) {
-      student.isLoggedIn = false;
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_STUDENT, JSON.stringify(student));
-    }
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_STUDENT);
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
   },
 
   deleteStudentAccount(nickname) {
     try {
+      const clean = (nickname || '').toLowerCase().trim();
       let list = this.getRegisteredStudents();
-      list = list.filter(s => s.nickname.toLowerCase() !== (nickname || '').toLowerCase());
+      list = list.filter(s => (s.nickname || '').toLowerCase().trim() !== clean);
       localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(list));
       
       const active = this.getActiveStudent();
-      if (active && active.nickname.toLowerCase() === (nickname || '').toLowerCase()) {
+      if (active && (active.nickname || '').toLowerCase().trim() === clean) {
         this.logoutStudent();
       }
+
+      // Also purge evaluation metrics for this deleted student
+      try {
+        const data = localStorage.getItem(STORAGE_KEYS.METRICS_LOGS);
+        if (data) {
+          const metrics = JSON.parse(data);
+          const filtered = metrics.filter(m => {
+            const mName = (m.studentName || '').toLowerCase().trim();
+            return mName !== clean && !mName.startsWith(clean + ' ');
+          });
+          localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(filtered));
+        }
+      } catch (err) {}
+
       return list;
     } catch (e) {
       return [];
@@ -377,7 +372,10 @@ const StorageService = {
   getAllMetrics() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.METRICS_LOGS);
-      return data ? JSON.parse(data) : this.getSeedMetrics();
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(m => m && !String(m.id || '').startsWith('METRIC_SEED_') && m.studentName !== 'Fatima Jama' && m.studentName !== 'Hassan Abdi');
     } catch (e) {
       console.error('Failed to load metrics from storage', e);
       return [];
@@ -496,50 +494,6 @@ const StorageService = {
 
   clearAllMetrics() {
     localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify([]));
-  },
-
-  // Seed sample data for demonstration so Admin dashboard looks populated immediately
-  getSeedMetrics() {
-    const seed = [
-      {
-        id: 'METRIC_SEED_1',
-        timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
-        studentName: 'Fatima Jama',
-        moduleId: 'mod_mouse',
-        moduleTitle: 'Mouse & Touchpad Basics',
-        durationSeconds: 245,
-        scorePercent: 100,
-        correctCount: 4,
-        totalQuestions: 4,
-        status: 'PASSED',
-        details: [
-          { qId: 'q1', type: 'radio', prompt: 'Which button do you use for normal clicking?', userAnswer: 'Left Button', isCorrect: true, duration: 8 },
-          { qId: 'q2', type: 'radio', prompt: 'How do you open an application icon on desktop?', userAnswer: 'Double Click (Two fast taps)', isCorrect: true, duration: 12 },
-          { qId: 'q3', type: 'checkbox', prompt: 'Select ALL things you can do with a mouse:', userAnswer: ['Move cursor', 'Click links', 'Scroll page'], isCorrect: true, duration: 25 },
-          { qId: 'q4', type: 'radio', prompt: 'What does the mouse scroll wheel do?', userAnswer: 'Moves the page up and down', isCorrect: true, duration: 15 }
-        ]
-      },
-      {
-        id: 'METRIC_SEED_2',
-        timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
-        studentName: 'Hassan Abdi',
-        moduleId: 'mod_keyboard',
-        moduleTitle: 'Keyboard & Typing Essentials',
-        durationSeconds: 410,
-        scorePercent: 75,
-        correctCount: 3,
-        totalQuestions: 4,
-        status: 'PASSED',
-        details: [
-          { qId: 'q1', type: 'radio', prompt: 'Which key moves down to a new line or submits?', userAnswer: 'Enter / Return key', isCorrect: true, duration: 14 },
-          { qId: 'q2', type: 'radio', prompt: 'How do you erase a letter if you made a mistake?', userAnswer: 'Backspace key', isCorrect: true, duration: 9 },
-          { qId: 'q3', type: 'checkbox', prompt: 'Choose keys that help type CAPITAL letters:', userAnswer: ['Shift key', 'Caps Lock key'], isCorrect: true, duration: 32 },
-          { qId: 'q4', type: 'radio', prompt: 'How does a Canadian Postal Code look?', userAnswer: '12345 (5 numbers only)', isCorrect: false, duration: 45 }
-        ]
-      }
-    ];
-    localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(seed));
-    return seed;
   }
 };
 

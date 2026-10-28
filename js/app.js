@@ -104,14 +104,14 @@ const App = {
 
     const student = (typeof StorageService !== 'undefined') 
       ? StorageService.getActiveStudent() 
-      : { nickname: 'Student_01', password: '123', avatarId: 'avatar_hijab_teal' };
+      : null;
 
     const nickField = document.getElementById('student-nickname-field');
     const passField = document.getElementById('student-password-field');
 
-    if (nickField) nickField.value = student.nickname || '';
-    if (passField) passField.value = student.password || '';
-    this.selectedAvatarId = student.avatarId || 'avatar_hijab_teal';
+    if (nickField) nickField.value = student ? (student.nickname || '') : '';
+    if (passField) passField.value = student ? (student.password || '') : '';
+    this.selectedAvatarId = (student && student.avatarId) ? student.avatarId : 'avatar_hijab_teal';
 
     this.renderAvatarPicker();
     this.renderRecentStudentsList();
@@ -1331,6 +1331,14 @@ const App = {
                 >
                   📄 .TXT
                 </button>
+                <button 
+                  class="btn-secondary" 
+                  style="padding: 0.35rem 0.55rem; font-size: 0.8rem; color: #dc2626; border-color: #fca5a5;" 
+                  onclick="event.stopPropagation(); App.deleteMetric('${log.id}')"
+                  title="Delete this evaluation record"
+                >
+                  🗑️
+                </button>
               </div>
             </td>
           </tr>
@@ -1961,6 +1969,13 @@ const App = {
   confirmClearLogs() {
     if (confirm('Are you sure you want to clear all evaluation records? This cannot be undone.')) {
       StorageService.clearAllMetrics();
+      this.render();
+    }
+  },
+
+  deleteMetric(metricId) {
+    if (confirm('Are you sure you want to delete this evaluation record?')) {
+      StorageService.deleteMetric(metricId);
       this.render();
     }
   },
