@@ -155,23 +155,65 @@ const StorageService = {
   // ==========================================
   DATABASE_FILE: 'data/database.json',
 
+  // Clean any obsolete seed students and phantom mock logs
+  cleanLegacyData() {
+    try {
+      const legacyNames = ['fatima', 'hassan', 'elena', 'david', 'test_student', 'student_01', 'fatima jama', 'hassan abdi'];
+      
+      const localStudents = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
+      if (localStudents) {
+        const list = JSON.parse(localStudents);
+        if (Array.isArray(list)) {
+          const cleaned = list.filter(s => !legacyNames.includes((s.nickname || '').toLowerCase().trim()));
+          if (cleaned.length !== list.length) {
+            localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(cleaned));
+          }
+        }
+      }
+
+      const active = localStorage.getItem(STORAGE_KEYS.ACTIVE_STUDENT);
+      if (active) {
+        const parsed = JSON.parse(active);
+        if (parsed && legacyNames.includes((parsed.nickname || '').toLowerCase().trim())) {
+          localStorage.removeItem(STORAGE_KEYS.ACTIVE_STUDENT);
+        }
+      }
+
+      const metrics = localStorage.getItem(STORAGE_KEYS.METRICS_LOGS);
+      if (metrics) {
+        const list = JSON.parse(metrics);
+        if (Array.isArray(list)) {
+          const cleaned = list.filter(m => {
+            const name = (m.studentName || '').toLowerCase().trim();
+            return !legacyNames.includes(name) && !String(m.id || '').startsWith('METRIC_SEED_');
+          });
+          if (cleaned.length !== list.length) {
+            localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(cleaned));
+          }
+        }
+      }
+    } catch (e) {}
+  },
+
   async loadDatabaseFromFile() {
+    this.cleanLegacyData();
     try {
       const res = await fetch(this.DATABASE_FILE + '?v=' + Date.now());
       if (!res.ok) return false;
       const db = await res.json();
       if (!db) return false;
 
-      // Initialize students if not already customized in localStorage
-      const localStudents = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
-      if (localStudents === null && Array.isArray(db.students)) {
-        localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(db.students));
-      }
+      const lastSync = localStorage.getItem('wp_db_synced_at');
+      const shouldSync = !lastSync || (db.updatedAt && db.updatedAt !== lastSync);
 
-      // Initialize teachers if not already customized in localStorage
-      const localTeachers = localStorage.getItem(STORAGE_KEYS.TEACHER_ACCOUNTS);
-      if (localTeachers === null && Array.isArray(db.teachers)) {
-        localStorage.setItem(STORAGE_KEYS.TEACHER_ACCOUNTS, JSON.stringify(db.teachers));
+      if (shouldSync) {
+        if (Array.isArray(db.students)) {
+          localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(db.students));
+        }
+        if (Array.isArray(db.teachers)) {
+          localStorage.setItem(STORAGE_KEYS.TEACHER_ACCOUNTS, JSON.stringify(db.teachers));
+        }
+        localStorage.setItem('wp_db_synced_at', db.updatedAt || new Date().toISOString());
       }
 
       return db;
