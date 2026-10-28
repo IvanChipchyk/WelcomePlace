@@ -28,6 +28,13 @@ const App = {
     this.setupEventListeners();
     this.updateRoleUI();
     this.render();
+
+    // Auto-sync with cloud (Google Sheets) in background to load students & metrics
+    StorageService.fetchMetricsFromGoogleSheet().then(res => {
+      if (res && res.success) {
+        this.render();
+      }
+    }).catch(() => {});
   },
 
   setupEventListeners() {
@@ -1686,13 +1693,25 @@ const App = {
           </p>
         </div>
 
-        <button 
-          class="download-txt-cta" 
-          style="max-width: 260px; padding: 0.75rem 1.25rem;"
-          onclick="App.openCreateStudentModal()"
-        >
-          <span>➕ Create Student Profile</span>
-        </button>
+        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+          <button 
+            type="button"
+            class="btn-secondary" 
+            style="padding: 0.6rem 1.1rem; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem;"
+            onclick="App.syncWithGoogleSheet()"
+            title="Fetch latest student accounts and metrics from Google Sheet"
+          >
+            <span>🔄 Sync with Cloud</span>
+          </button>
+          <button 
+            type="button"
+            class="download-txt-cta" 
+            style="max-width: 260px; padding: 0.6rem 1.15rem;"
+            onclick="App.openCreateStudentModal()"
+          >
+            <span>➕ Create Student Profile</span>
+          </button>
+        </div>
       </div>
 
       <div class="table-card">
@@ -1817,16 +1836,31 @@ const App = {
   },
 
   submitAdminCreateStudent() {
-    const nick = document.getElementById('new-student-nick').value;
-    const pass = document.getElementById('new-student-pass').value;
+    const nick = (document.getElementById('new-student-nick').value || '').trim();
+    const pass = (document.getElementById('new-student-pass').value || '').trim();
     const avatar = this.adminStudentAvatarId || 'avatar_hijab_teal';
 
-    const res = StorageService.authenticateStudent(nick, pass, avatar);
-    if (!res.success) {
-      alert(res.error);
+    if (!nick) {
+      alert('Please enter a student nickname.');
       return;
     }
 
+    const students = StorageService.getRegisteredStudents();
+    const exists = students.some(s => s.nickname.toLowerCase() === nick.toLowerCase());
+    if (exists) {
+      alert(`Student account "${nick}" already exists.`);
+      return;
+    }
+
+    const newStudent = {
+      nickname: nick,
+      password: pass || '123',
+      avatarId: avatar,
+      isLoggedIn: false,
+      createdAt: new Date().toISOString()
+    };
+
+    StorageService.saveRegisteredStudent(newStudent);
     this.closeCreateStudentModal();
     this.renderAdminDashboard();
   },

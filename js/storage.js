@@ -95,20 +95,33 @@ const StorageService = {
         list.push({ ...studentObj, isLoggedIn: false });
       }
       localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(list));
+      this.syncStudentsToCloud(list);
     } catch (e) {}
+  },
+
+  saveRegisteredStudent(studentObj) {
+    try {
+      let list = this.getRegisteredStudents();
+      const idx = list.findIndex(s => s.nickname.toLowerCase() === (studentObj.nickname || '').toLowerCase());
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...studentObj, isLoggedIn: false };
+      } else {
+        list.push({ ...studentObj, isLoggedIn: false });
+      }
+      localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(list));
+      this.syncStudentsToCloud(list);
+      return list;
+    } catch (e) {
+      return [];
+    }
   },
 
   getRegisteredStudents() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
-      if (data) return JSON.parse(data);
+      if (data !== null) return JSON.parse(data);
     } catch (e) {}
-    return [
-      { nickname: 'Fatima', password: '123', avatarId: 'avatar_hijab_teal' },
-      { nickname: 'Hassan', password: '123', avatarId: 'avatar_man_african' },
-      { nickname: 'Elena', password: '123', avatarId: 'avatar_girl_caucasian' },
-      { nickname: 'David', password: '123', avatarId: 'avatar_boy_caucasian' }
-    ];
+    return [];
   },
 
   logoutStudent() {
@@ -130,10 +143,28 @@ const StorageService = {
       if (active && active.nickname.toLowerCase() === (nickname || '').toLowerCase()) {
         this.logoutStudent();
       }
+      this.syncStudentsToCloud(list);
       return list;
     } catch (e) {
       return [];
     }
+  },
+
+  async syncStudentsToCloud(studentsList = null) {
+    const list = studentsList !== null ? studentsList : this.getRegisteredStudents();
+    const record = {
+      studentName: '__SYSTEM_STUDENTS_SYNC__',
+      avatarId: 'system',
+      moduleId: 'SYSTEM_ACCOUNTS',
+      moduleTitle: 'Registered Student Accounts',
+      scorePercent: 0,
+      correctCount: 0,
+      totalQuestions: 0,
+      durationSeconds: 0,
+      status: 'SYNC',
+      details: list
+    };
+    return this.syncMetricToGoogleSheet(record);
   },
 
   // ==========================================
@@ -354,10 +385,23 @@ const StorageService = {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const records = await res.json();
       if (Array.isArray(records)) {
+        // 1. Synchronize registered students from cloud if available
+        const studentSyncRecords = records
+          .filter(r => r.moduleId === 'SYSTEM_ACCOUNTS' && Array.isArray(r.details))
+          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        if (studentSyncRecords.length > 0) {
+          const latestStudents = studentSyncRecords[0].details;
+          localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(latestStudents));
+        }
+
+        // 2. Synchronize metrics (excluding internal SYSTEM_ACCOUNTS sync records)
         const local = this.getAllMetrics();
         let addedCount = 0;
         records.forEach(remote => {
           if (!remote.studentName) return;
+          if (remote.moduleId === 'SYSTEM_ACCOUNTS') return; // Do not display internal sync records in quiz logs
+
           const exists = local.some(l => 
             l.timestamp === remote.timestamp && 
             l.studentName === remote.studentName &&
