@@ -130,13 +130,30 @@ const App = {
       if (
         this.currentModule &&
         this.activeLessonTab === 'presentation' &&
-        this.presentationViewMode === 'deck' &&
         !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target && e.target.tagName) || '')
       ) {
-        if (e.key === 'ArrowRight') this.nextSlide();
-        if (e.key === 'ArrowLeft') this.prevSlide();
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          this.nextSlide();
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          this.prevSlide();
+        }
       }
     });
+  },
+
+  toggleSlideFullscreen() {
+    const el = document.getElementById('presentation-viewer-root');
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      if (el.requestFullscreen) {
+        el.requestFullscreen().catch(() => {});
+      }
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
   },
 
   togglePasswordVisibility(inputId, btnEl) {
@@ -1086,149 +1103,130 @@ const App = {
     }
   },
 
-  // Slot 1: Presentation Carousel + Visual Primer PDF Viewer
+  // Slot 1: Real Visual Slide Presentation Viewer (PDF Slides 1..15)
   renderPresentationSlot(container, slides = [], meta = {}) {
-    if (!slides.length && !meta.pdfUrl) {
+    if (!slides.length) {
       container.innerHTML = '<div class="empty-state">No presentations available yet.</div>';
       return;
     }
 
-    const mode = this.presentationViewMode || 'deck';
-
-    const modeBarHtml = `
-      <div class="presentation-toolbar">
-        <div class="presentation-mode-switcher">
-          <button
-            type="button"
-            class="pres-mode-btn ${mode === 'deck' ? 'active' : ''}"
-            onclick="App.switchPresentationMode('deck')"
-          >
-            <span>📊 Interactive Slide Deck</span>
-            <span class="pres-mode-count">${slides.length} Slides</span>
-          </button>
-          ${meta.pdfUrl ? `
-            <button
-              type="button"
-              class="pres-mode-btn ${mode === 'pdf' ? 'active' : ''}"
-              onclick="App.switchPresentationMode('pdf')"
-            >
-              <span>📕 Visual Primer Presentation (PDF)</span>
-              <span class="pres-mode-count">${meta.pdfPages || 15} Pages</span>
-            </button>
-          ` : ''}
-        </div>
-
-        <div class="presentation-download-actions">
-          ${meta.pptxUrl ? `
-            <a href="${meta.pptxUrl}" download class="btn-secondary btn-sm">
-              <span>📥 Download .PPTX</span>
-            </a>
-          ` : ''}
-          ${meta.pdfUrl ? `
-            <a href="${meta.pdfUrl}" download class="btn-secondary btn-sm">
-              <span>📥 Download .PDF</span>
-            </a>
-          ` : ''}
-        </div>
-      </div>
-    `;
-
-    if (mode === 'pdf' && meta.pdfUrl) {
-      container.innerHTML = `
-        <div class="presentation-card">
-          ${modeBarHtml}
-          <div class="pdf-viewer-header">
-            <div>
-              <h3>📕 ${meta.pdfLabel || 'Illustrated Visual Primer (PDF)'}</h3>
-              <p>
-                Browse all ${meta.pdfPages || 15} visual slides directly below or open in a new tab.
-              </p>
-            </div>
-            <a href="${meta.pdfUrl}" target="_blank" class="btn-primary-sm">
-              <span>↗️ Open Full Screen</span>
-            </a>
-          </div>
-          <div class="pdf-embed-container">
-            <iframe src="${meta.pdfUrl}#view=FitH" title="Computer Basics & Mouse Mastery Presentation PDF"></iframe>
-          </div>
-        </div>
-      `;
-      return;
-    }
+    if (this.currentSlideIndex < 0) this.currentSlideIndex = 0;
+    if (this.currentSlideIndex >= slides.length) this.currentSlideIndex = slides.length - 1;
 
     const currentSlide = slides[this.currentSlideIndex] || slides[0];
     const progressPct = Math.round(((this.currentSlideIndex + 1) / slides.length) * 100);
     const speakPayload = encodeURIComponent(
-      `${currentSlide.title}. ${currentSlide.text} ${(currentSlide.bullets || []).join('. ')}`
+      currentSlide.speech || currentSlide.title || ''
     );
+    const isFirst = this.currentSlideIndex === 0;
+    const isLast = this.currentSlideIndex === slides.length - 1;
 
-    const bulletsHtml = (currentSlide.bullets && currentSlide.bullets.length > 0)
-      ? `<ul class="slide-bullets-list">
-          ${currentSlide.bullets.map(b => `<li>${b}</li>`).join('')}
-        </ul>`
-      : '';
-
-    const thumbnailsHtml = slides.map((s, idx) => `
+    const thumbsHtml = slides.map((s, idx) => `
       <button
         type="button"
-        class="slide-thumb-pill ${idx === this.currentSlideIndex ? 'active' : ''}"
+        class="slide-visual-thumb ${idx === this.currentSlideIndex ? 'active' : ''}"
         onclick="App.goToSlide(${idx})"
         title="Slide ${idx + 1}: ${s.title}"
+        aria-label="Go to slide ${idx + 1}: ${s.title}"
       >
-        <span>${idx + 1}</span>
+        <img src="${s.image}" alt="Slide ${idx + 1}" loading="lazy" />
+        <span class="slide-thumb-num">${idx + 1}</span>
       </button>
     `).join('');
 
     container.innerHTML = `
-      <div class="presentation-card">
-        ${modeBarHtml}
+      <div class="presentation-card" id="presentation-viewer-root">
+        <div class="presentation-toolbar">
+          <div class="presentation-heading-group">
+            <span class="slide-counter-badge">Slide ${this.currentSlideIndex + 1} of ${slides.length}</span>
+            <h2 class="presentation-slide-heading">${currentSlide.title}</h2>
+          </div>
+
+          <div class="presentation-download-actions">
+            <button
+              type="button"
+              class="slide-audio-btn"
+              onclick="App.playAudioPrompt('${speakPayload}')"
+              title="Listen to narration for this slide"
+            >
+              <span>🔊 Listen</span>
+            </button>
+            <button
+              type="button"
+              class="btn-secondary btn-sm"
+              onclick="App.toggleSlideFullscreen()"
+              title="Toggle fullscreen presentation mode"
+            >
+              <span>⛶ Fullscreen</span>
+            </button>
+            ${meta.pdfUrl ? `
+              <a href="${meta.pdfUrl}" download class="btn-secondary btn-sm">
+                <span>📥 PDF</span>
+              </a>
+            ` : ''}
+            ${meta.pptxUrl ? `
+              <a href="${meta.pptxUrl}" download class="btn-secondary btn-sm">
+                <span>📥 PPTX</span>
+              </a>
+            ` : ''}
+          </div>
+        </div>
 
         <div class="slide-progress-track">
           <div class="slide-progress-fill" style="width: ${progressPct}%;"></div>
         </div>
 
-        <div class="slide-stage">
-          <div class="slide-stage-top">
-            <span class="slide-category-pill">${currentSlide.category || 'Lesson Presentation'}</span>
-            <div class="row gap-sm">
-              <button
-                type="button"
-                class="slide-audio-btn"
-                onclick="App.playAudioPrompt('${speakPayload}')"
-                title="Listen to this slide read aloud"
-              >
-                <span>🔊 Read Slide</span>
-              </button>
-              <span class="slide-counter-badge">
-                Slide ${this.currentSlideIndex + 1} / ${slides.length}
-              </span>
-            </div>
-          </div>
+        <div class="slide-visual-stage">
+          <button
+            type="button"
+            class="slide-arrow-overlay prev"
+            ${isFirst ? 'disabled' : ''}
+            onclick="App.prevSlide()"
+            aria-label="Previous slide"
+            title="Previous slide (←)"
+          >
+            <span>◀</span>
+          </button>
 
-          <div class="slide-stage-body">
-            <div class="slide-content-icon">${currentSlide.icon || '💻'}</div>
-            <h2 class="slide-title">${currentSlide.title}</h2>
-            <p class="slide-text">${currentSlide.text}</p>
-            ${bulletsHtml}
-            ${currentSlide.tip ? `
-              <div class="slide-tip-callout">
-                ${currentSlide.tip}
-              </div>
-            ` : ''}
-          </div>
+          <img
+            src="${currentSlide.image}"
+            alt="Slide ${this.currentSlideIndex + 1}: ${currentSlide.title}"
+            class="slide-visual-image"
+          />
+
+          <button
+            type="button"
+            class="slide-arrow-overlay next"
+            ${isLast ? 'disabled' : ''}
+            onclick="App.nextSlide()"
+            aria-label="Next slide"
+            title="Next slide (→)"
+          >
+            <span>▶</span>
+          </button>
         </div>
 
         <div class="presentation-nav">
-          <button class="slide-nav-btn" ${this.currentSlideIndex === 0 ? 'disabled' : ''} onclick="App.prevSlide()">
+          <button
+            type="button"
+            class="slide-nav-btn"
+            ${isFirst ? 'disabled' : ''}
+            onclick="App.prevSlide()"
+          >
             <span>◀</span>
             <span>Previous</span>
           </button>
 
-          <div class="slide-thumb-strip">
-            ${thumbnailsHtml}
+          <div class="slide-visual-thumbs" role="tablist" aria-label="Presentation slides">
+            ${thumbsHtml}
           </div>
 
-          <button class="slide-nav-btn" ${this.currentSlideIndex === slides.length - 1 ? 'disabled' : ''} onclick="App.nextSlide()">
+          <button
+            type="button"
+            class="slide-nav-btn"
+            ${isLast ? 'disabled' : ''}
+            onclick="App.nextSlide()"
+          >
             <span>Next</span>
             <span>▶</span>
           </button>
