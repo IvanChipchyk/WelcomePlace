@@ -6,12 +6,12 @@
   <title>WelcomePlace Canada - Basic Computer Literacy Platform</title>
   <meta name="description" content="Local offline computer literacy platform designed for new immigrants to Canada. Features visual slide presentations, text guides, video demonstrations, spoken audio pronunciation, and interactive quizzes with TXT metrics export.">
   <!-- Modular CSS Architecture (All files < 900 lines) -->
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/curriculum.css">
-  <link rel="stylesheet" href="css/portals.css">
-  <link rel="stylesheet" href="css/mouse-lab.css">
-  <link rel="stylesheet" href="css/typing-lab.css">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/base.css?v=2.1.0">
+  <link rel="stylesheet" href="css/curriculum.css?v=2.1.0">
+  <link rel="stylesheet" href="css/portals.css?v=2.1.0">
+  <link rel="stylesheet" href="css/mouse-lab.css?v=2.1.0">
+  <link rel="stylesheet" href="css/typing-lab.css?v=2.1.0">
+  <link rel="stylesheet" href="css/styles.css?v=2.1.0">
 </head>
 <body>
 
@@ -49,7 +49,7 @@
             type="button" 
             class="role-btn role-teacher" 
             data-role-target="teacher" 
-            title="Switch to Teacher Profile (PIN: 1234)"
+            title="Switch to Teacher Profile (Instructor Login Required)"
           >
             <span>🧑‍🏫</span>
             <span>Teacher</span>
@@ -59,15 +59,15 @@
             type="button" 
             class="role-btn role-admin" 
             data-role-target="admin" 
-            title="Switch to Administrator Dashboard (PIN: 9999)"
+            title="Switch to Administrator Dashboard (PIN Required)"
           >
             <span>🛡️</span>
             <span>Admin</span>
           </button>
         </div>
 
-        <!-- Header Quick Labs Shortcuts -->
-        <div class="header-labs-nav" style="display: flex; gap: 0.35rem; align-items: center;">
+        <!-- Header Quick Labs Shortcuts (hidden until authenticated) -->
+        <div class="header-labs-nav" id="header-labs-nav" style="display: flex; gap: 0.35rem; align-items: center;">
           <button 
             type="button" 
             class="btn-lab-header" 
@@ -130,15 +130,20 @@
     </div>
   </footer>
 
-  <!-- Student Login & Avatar Selection Modal -->
+  <!-- Student Sign In Modal (Admin-Created Accounts Only) -->
   <div class="modal-overlay" id="student-login-modal" role="dialog" aria-modal="true" aria-labelledby="student-modal-title">
     <div class="modal-box student-modal-box">
       <div class="student-modal-header">
         <div class="modal-icon-badge">🎓</div>
-        <h3 id="student-modal-title">Student Profile & Sign In</h3>
+        <h3 id="student-modal-title">Student Sign In</h3>
         <p style="font-size: 0.88rem; color: var(--text-muted);">
-          Choose your nickname, password, and personal avatar
+          Sign in with the student account created for you by the Administrator
         </p>
+      </div>
+
+      <div class="auth-notice-banner">
+        <span>🔒</span>
+        <span>Student accounts and passwords are created and managed exclusively by the <strong>Administrator</strong>.</span>
       </div>
 
       <form id="student-login-form" onsubmit="event.preventDefault(); App.submitStudentLogin();">
@@ -150,40 +155,41 @@
             type="text" 
             id="student-nickname-field" 
             class="student-text-input" 
-            placeholder="Enter student nickname" 
+            placeholder="Enter your assigned student nickname" 
             required
-            autocomplete="nickname"
+            autocomplete="username"
           />
         </div>
 
         <div class="form-group-wrap">
           <label for="student-password-field" class="form-field-label">
-            <span>🔑 Password (easy to remember):</span>
+            <span>🔑 Password:</span>
           </label>
-          <input 
-            type="text" 
-            id="student-password-field" 
-            class="student-text-input" 
-            placeholder="e.g. 1234" 
-            required
-            autocomplete="current-password"
-          />
-          <small class="field-help-text">Simple 3-4 digit numbers or letters</small>
-        </div>
-
-        <div class="form-group-wrap">
-          <label class="form-field-label">
-            <span>🎨 Choose Your Avatar:</span>
-          </label>
-          <div class="avatar-selection-grid" id="avatar-picker-grid">
-            <!-- Dynamically populated from AVATARS_DATA -->
+          <div class="password-input-wrap">
+            <input 
+              type="password" 
+              id="student-password-field" 
+              class="student-text-input" 
+              placeholder="Enter your student password" 
+              required
+              autocomplete="current-password"
+            />
+            <button 
+              type="button" 
+              class="password-toggle-btn" 
+              onclick="App.togglePasswordVisibility('student-password-field', this)"
+              aria-label="Toggle password visibility"
+            >👁️</button>
           </div>
+          <small class="field-help-text">Ask your instructor or administrator if you forgot your password</small>
         </div>
 
-        <!-- Quick Switch for Previous Students -->
+        <div id="student-login-avatar-preview" class="selected-student-preview" style="display: none;"></div>
+
+        <!-- Quick Select for Admin-Registered Students (fills nickname only, never password) -->
         <div class="recent-students-strip" id="recent-students-section" style="display: none;">
           <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">
-            Or quick select previous student:
+            Quick select your profile name (password still required):
           </span>
           <div class="recent-students-list" id="recent-students-chips"></div>
         </div>
@@ -193,7 +199,7 @@
             Cancel
           </button>
           <button type="submit" class="btn-confirm-pin" style="background: var(--brand-blue); color: white;">
-            Save & Enter Classroom
+            Sign In to Classroom
           </button>
         </div>
       </form>
@@ -336,6 +342,83 @@
     </div>
   </div>
 
+  <!-- Admin Modal: Edit Student Account (Reset Password / Avatar) -->
+  <div class="modal-overlay" id="admin-edit-student-modal" role="dialog" aria-modal="true">
+    <div class="modal-box student-modal-box">
+      <div class="student-modal-header">
+        <div class="modal-icon-badge">🔑</div>
+        <h3>Edit Student Profile</h3>
+        <p id="edit-student-subtitle" style="font-size: 0.88rem; color: var(--text-muted);">
+          Reset password or update assigned avatar
+        </p>
+      </div>
+
+      <form onsubmit="event.preventDefault(); App.submitAdminEditStudent();">
+        <input type="hidden" id="edit-student-original-nick" />
+        <div class="form-group-wrap">
+          <label class="form-field-label">Student Nickname:</label>
+          <input type="text" id="edit-student-nick" class="student-text-input" disabled style="background: var(--surface-muted); cursor: not-allowed;" />
+        </div>
+
+        <div class="form-group-wrap">
+          <label class="form-field-label">New Student Password:</label>
+          <input type="text" id="edit-student-pass" class="student-text-input" placeholder="Enter new password" required />
+        </div>
+
+        <div class="form-group-wrap">
+          <label class="form-field-label">Update Avatar:</label>
+          <div class="avatar-selection-grid" id="admin-edit-student-avatar-grid"></div>
+        </div>
+
+        <div class="modal-buttons" style="margin-top: 1.5rem;">
+          <button type="button" class="btn-cancel-pin" onclick="App.closeEditStudentModal()">Cancel</button>
+          <button type="submit" class="btn-confirm-pin" style="background: var(--brand-blue); color: white;">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Modal: Edit Teacher Account (Reset Password / Details) -->
+  <div class="modal-overlay" id="admin-edit-teacher-modal" role="dialog" aria-modal="true">
+    <div class="modal-box student-modal-box">
+      <div class="student-modal-header">
+        <div class="modal-icon-badge">🔑</div>
+        <h3>Edit Teacher Account</h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted);">
+          Update instructor credentials or reset password
+        </p>
+      </div>
+
+      <form onsubmit="event.preventDefault(); App.submitAdminEditTeacher();">
+        <input type="hidden" id="edit-teacher-id" />
+        <div class="form-group-wrap">
+          <label class="form-field-label">Full Name of Teacher:</label>
+          <input type="text" id="edit-teacher-name" class="student-text-input" required />
+        </div>
+
+        <div class="form-group-wrap">
+          <label class="form-field-label">Login Username:</label>
+          <input type="text" id="edit-teacher-username" class="student-text-input" required />
+        </div>
+
+        <div class="form-group-wrap">
+          <label class="form-field-label">New Password:</label>
+          <input type="text" id="edit-teacher-password" class="student-text-input" required />
+        </div>
+
+        <div class="form-group-wrap">
+          <label class="form-field-label">Specialization:</label>
+          <input type="text" id="edit-teacher-spec" class="student-text-input" />
+        </div>
+
+        <div class="modal-buttons" style="margin-top: 1.5rem;">
+          <button type="button" class="btn-cancel-pin" onclick="App.closeEditTeacherModal()">Cancel</button>
+          <button type="submit" class="btn-confirm-pin" style="background: #9a3412; color: white;">Save Teacher Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Admin Metric Inspection Modal (Live On-Screen Evaluation Review) -->
   <div class="modal-overlay" id="admin-metric-details-modal" role="dialog" aria-modal="true" aria-labelledby="metric-details-title">
     <div class="modal-box" style="max-width: 680px; width: 92%; text-align: left; max-height: 85vh; display: flex; flex-direction: column; padding: 1.5rem;">
@@ -406,15 +489,15 @@
   </div>
 
   <!-- Application Scripts (Loaded in dependency order with cache buster) -->
-  <script src="js/sqlite-service.js?v=2.0.1"></script>
-  <script src="js/storage.js?v=2.0.1"></script>
-  <script src="js/avatars.js?v=2.0.1"></script>
-  <script src="js/txt-generator.js?v=2.0.1"></script>
-  <script src="js/modules-data.js?v=2.0.1"></script>
-  <script src="js/quiz-engine.js?v=2.0.1"></script>
-  <script src="js/mouse-trainer.js?v=2.0.1"></script>
-  <script src="js/typing-trainer.js?v=2.0.1"></script>
-  <script src="js/app.js?v=2.0.1"></script>
+  <script src="js/sqlite-service.js?v=2.1.0"></script>
+  <script src="js/storage.js?v=2.1.0"></script>
+  <script src="js/avatars.js?v=2.1.0"></script>
+  <script src="js/txt-generator.js?v=2.1.0"></script>
+  <script src="js/modules-data.js?v=2.1.0"></script>
+  <script src="js/quiz-engine.js?v=2.1.0"></script>
+  <script src="js/mouse-trainer.js?v=2.1.0"></script>
+  <script src="js/typing-trainer.js?v=2.1.0"></script>
+  <script src="js/app.js?v=2.1.0"></script>
 
 </body>
 </html>

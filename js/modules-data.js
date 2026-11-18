@@ -1,6 +1,7 @@
 /**
  * WelcomePlace - Learning Modules & Template Data Structure
- * Easily extensible for adding presentations, text, quizzes (radio/checkboxes), video, and audio.
+ * Enriched with official Module 1 curriculum, 12-slide PPTX deck, 15-page Visual Primer PDF,
+ * printable Review & Quiz DOCX, MP4 walkthrough, and Teacher-Exclusive Lesson Plan & Verbatim Script.
  */
 
 const MODULES_DATA = [
@@ -8,10 +9,18 @@ const MODULES_DATA = [
     id: 'mod_mouse',
     code: 'MOD01_MOUSE',
     title: 'Introduction to Computers & Mouse Basics',
-    subtitle: 'First confident steps: computer parts, comfortable grip, and 4 core actions',
+    subtitle: 'First confident steps: computer parts, comfortable grip, and 6 core mouse actions',
     icon: '🖱️',
     badge: 'Module 1 • Beginner',
-    tags: ['Computer Parts', 'Mouse Basics', 'Comfort Grip', 'Clicks'],
+    tags: ['Computer Parts', 'Mouse Basics', 'Comfort Grip', 'Clicks & Scroll'],
+
+    presentationMeta: {
+      pptxUrl: 'media/docs/Introduction_to_Computers_and_Mouse_Basics.pptx',
+      pptxLabel: 'Introduction to Computers & Mouse Basics (.PPTX, 12 Slides)',
+      pdfUrl: 'media/docs/Computer_Basics_Mouse_Mastery.pdf',
+      pdfLabel: 'Computer Basics & Mouse Mastery — Visual Primer (.PDF, 15 Slides)',
+      pdfPages: 15
+    },
 
     // ==========================================
     // 1. PRESENTATION (12 Slides from PPTX)
@@ -19,115 +28,215 @@ const MODULES_DATA = [
     presentation: [
       {
         slideNumber: 1,
+        category: 'Immigration Services • Digital Literacy • Lesson 1',
         title: 'Introduction to Computers & Mouse Basics',
         icon: '💻',
-        text: 'Welcome to Lesson 1: First confident steps with computer parts, comfortable grip, and the 4 core mouse actions.',
+        text: 'Welcome to Lesson 1: First confident steps with computer parts, comfortable grip, and core mouse actions.',
+        bullets: [
+          'Built for first-time computer learners & newcomers in Canada',
+          'Clear visual metaphors — zero technical jargon',
+          'Step-by-step practice at your own relaxed pace'
+        ],
         tip: '💡 In this class, mistakes are welcome! You cannot break the computer.'
       },
       {
         slideNumber: 2,
+        category: 'Learning Goals',
         title: 'What We Will Learn Today',
         icon: '🎯',
-        text: '1. PC Hardware: 4 main parts of every computer desk.\n2. Comfort Grip: Relaxed hand posture without wrist strain.\n3. 4 Core Moves: Hovering, single clicking, double clicking, and scrolling.\n4. Fun Practice: Simple interactive drills and friendly exercises.',
+        text: 'Four practical building blocks to feel confident at any computer desk.',
+        bullets: [
+          'PC Hardware — 4 key parts of every computer desk',
+          'Comfort Grip — Relaxed hand posture without wrist strain',
+          'Core Moves — Hovering, single click, double click, right-click, drag & drop, scrolling',
+          'Fun Practice — Interactive drills and friendly exercises'
+        ],
         tip: '💡 Take your time and learn at your own comfortable pace.'
       },
       {
         slideNumber: 3,
+        category: 'Hardware Components',
         title: '4 Main Parts of the Computer Desk',
         icon: '🖥️',
-        text: '1. Monitor / Screen: Displays all text, windows, and images.\n2. Computer / Tower: The system brain holding the Power button.\n3. Keyboard: Board of keys used to type letters and numbers.\n4. Mouse: Hand-held device used to move the screen pointer.',
+        text: 'Every desktop computer workstation is built from four simple parts:',
+        bullets: [
+          '1. Monitor / Screen — The glass window that displays all text, windows, and images',
+          '2. Computer / Tower — The system brain holding the Power button',
+          '3. Keyboard — Board of keys used to type letters, names, numbers, and passwords',
+          '4. Mouse — Hand-held device used to move the navigation arrow on screen'
+        ],
         tip: '💡 Look at your desk and point to all 4 main components.'
       },
       {
         slideNumber: 4,
+        category: 'Mouse Anatomy',
         title: 'Main Parts of a Computer Mouse',
         icon: '🖱️',
-        text: '• Left Button (Left Click): The primary button for 90% of daily actions.\n• Scroll Wheel: Rolls long web pages and documents up and down.\n• Right Button (Right Click): Opens helpful popup menus with additional choices.',
+        text: 'A standard mouse has three simple controls — think Green Dot and Orange Dot:',
+        bullets: [
+          'Left Button (Green Dot) — Your primary button used for 90% of daily actions',
+          'Scroll Wheel (Center) — Rolls long web pages and documents up and down smoothly',
+          'Right Button (Orange Dot) — Opens helpful popup menus with extra choices (Copy, Paste, Rename)'
+        ],
         tip: '💡 Rest your index finger on the left button and middle finger on the right button.'
       },
       {
         slideNumber: 5,
+        category: 'Ergonomics & Comfort',
         title: 'How to Hold the Mouse Correctly',
         icon: '✋',
-        text: '1. Relaxed Palm: Rest your palm gently over the curved body.\n2. Index Finger Ready: Keep your index finger resting on the left side.\n3. Straight Wrist Line: Slide with your forearm and keep your wrist flat on the desk.',
-        tip: '💡 Do not squeeze the mouse tightly—hold it as gently as a small bird.'
+        text: 'A relaxed hand prevents wrist pain and keeps your touch light and accurate.',
+        bullets: [
+          '1. Relaxed Palm — Rest your palm gently over the curved body (like holding a small bird)',
+          '2. Index Finger Ready — Keep your index finger resting lightly on the left button',
+          '3. Straight Wrist Line — Slide using your forearm with your wrist flat on the desk'
+        ],
+        tip: '💡 Do NOT squeeze tightly ("death grip") and do not lift the mouse in the air to move.'
       },
       {
         slideNumber: 6,
+        category: 'Core Skills 1 & 2',
         title: 'Moving the Pointer & Single Click',
         icon: '👆',
-        text: '1. Move & Hover: Slide the pointer over an icon without pressing any buttons. Notice how buttons highlight.\n2. Single Left Click: One gentle tap on the left button with your index finger. Used to select objects or open links.',
-        tip: '💡 Keep the mouse completely still while clicking.'
+        text: 'Start with gentle movement and one crisp tap:',
+        bullets: [
+          '1. Move & Hover — Slide the pointer over an icon without pressing any buttons; watch for helpful tooltips',
+          '2. Single Left Click — One gentle tap on the left button with your index finger, then release immediately',
+          'Visual Cue — Selected items highlight in blue; web links open on a single click'
+        ],
+        tip: '💡 Keep the mouse completely still flat on the mousepad while clicking.'
       },
       {
         slideNumber: 7,
+        category: 'Core Skill 3 • Technique',
         title: 'Mastering the Double Click',
         icon: '⚡',
-        text: 'Two quick taps in rapid succession (tap-tap like a heartbeat!).\nUsed to open programs, folders, and documents on the desktop.\nGolden Rule: Keep the mouse completely still on the desk while clicking twice!',
-        tip: '💡 If you accidentally move the mouse between taps, the computer will not recognize the double click.'
+        text: 'Two quick taps in rapid succession — tap-tap like a heartbeat!',
+        bullets: [
+          'Used to fully open programs, documents, and folders on your desktop',
+          'Golden Rule — FREEZE your hand on the desk while your index finger taps twice fast',
+          'If the mouse shakes between taps, the computer thinks you want to move the icon instead of opening it'
+        ],
+        tip: '💡 Click-Click! Quick like a heartbeat — do not move the mouse between clicks.'
       },
       {
         slideNumber: 8,
+        category: 'Core Skills 4 & 5',
         title: 'Drag & Drop and Scrolling',
         icon: '📦',
-        text: 'Drag & Drop (3-step action):\n1. Press: Hold the left button down on an icon.\n2. Slide: Move the mouse to the new location.\n3. Release: Let go of the button to drop the item.\n\nScroll Wheel:\n• Roll toward you to go down.\n• Roll forward away to go up.',
-        tip: '💡 You do not need to click the wheel—just roll it gently with your index finger.'
+        text: 'Move items across the screen and travel smoothly through long pages:',
+        bullets: [
+          'Drag & Drop (3 Steps) — 1. Press & hold the left button down • 2. Slide mouse to the new spot • 3. Release to drop',
+          'Scroll Wheel Down — Roll the center wheel toward you to read lower down the page',
+          'Scroll Wheel Up — Roll the wheel forward away from you to return to the top'
+        ],
+        tip: '💡 You do not need to click the scroll wheel—just roll it gently with your finger.'
       },
       {
         slideNumber: 9,
+        category: 'Practice Session',
         title: 'Interactive Tools for Mouse Practice',
         icon: '🎮',
-        text: '• Mousercise: Step-by-step beginner web practice.\n• Jigsaw Planet: Digital puzzles for drag-and-drop mastery.\n• MS Paint: Freeform drawing for fine motor control.\n• WelcomePlace Mouse Lab: Interactive speed and accuracy drills.',
-        tip: '💡 Try our built-in Mouse Skills Lab from the top menu anytime!'
+        text: 'Train muscle memory with calm, stress-free interactive exercises:',
+        bullets: [
+          'WelcomePlace Mouse Lab — 24 built-in drills for Click, Double-Click, Right-Click, Drag & Drop, Text Select & Scroll',
+          'Mousercise — Step-by-step beginner hovering & precision clicking',
+          'Jigsaw Planet — Digital puzzles for drag-and-drop mastery',
+          'MS Paint — Freeform drawing circles and filling colors for motor control'
+        ],
+        tip: '💡 Try our built-in Mouse Precision Lab from the top menu anytime!'
       },
       {
         slideNumber: 10,
-        title: 'Step-by-Step Lesson Schedule (60–90 Min)',
+        category: 'Class Roadmap • 60–90 Minutes',
+        title: 'Step-by-Step Lesson Schedule',
         icon: '⏱️',
-        text: '• 10 min: Welcome, seating, and screen check.\n• 15 min: Hardware components and comfortable grip.\n• 20 min: Core clicks (single, double, right-click).\n• 30 min: Interactive drills and mouse practice.\n• 10 min: Q&A, wrap-up, and review quiz.',
-        tip: '💡 Pace yourself—short pauses keep your hands relaxed.'
+        text: 'How a typical WelcomePlace guided classroom session flows:',
+        bullets: [
+          '10 min — Welcome, chair & screen comfort check',
+          '15 min — Computer hardware parts & ergonomic mouse grip',
+          '20 min — Core clicks (Hover, Single, Double, Right-Click & Drag)',
+          '30 min — Interactive Mouse Lab drills and games',
+          '10 min — Q&A, wrap-up, and Module 1 review quiz'
+        ],
+        tip: '💡 Pace yourself—short finger stretches keep your hands relaxed.'
       },
       {
         slideNumber: 11,
+        category: 'Beginner Advice',
         title: '3 Rules for Stress-Free Learning',
         icon: '🌟',
-        text: '1. Zero Fear: You cannot break the computer by clicking or moving the mouse.\n2. Light Touch: Gentle finger taps are always enough.\n3. Your Own Pace: Confidence grows with every minute of practice.',
+        text: 'Keep these three promises in mind every time you sit at a computer:',
+        bullets: [
+          '1. Zero Fear — You cannot break the computer by pressing a button or moving the mouse',
+          '2. Light Touch — Soft, relaxed finger taps are all the computer needs to understand you',
+          '3. Your Own Pace — Mistakes are welcome here; confidence grows with every minute of practice'
+        ],
         tip: '💡 Always raise your hand if you feel stuck—your instructor is happy to help.'
       },
       {
         slideNumber: 12,
+        category: 'Lesson Complete',
         title: 'Great Job Today!',
         icon: '🎉',
-        text: 'You took your first confident step into the digital world!\nCelebrate your progress today. Ask any question—we are here to support you.\nNext Lesson: The Keyboard & Typing Basics.',
+        text: 'You took your first confident step into the digital world!',
+        bullets: [
+          'Celebrate your progress today — you learned hardware, ergonomics, and core mouse actions',
+          'Download the Illustrated Visual Primer PDF and Quick Review sheet from Files & Presentations',
+          'Next Lesson Preview — The Keyboard & Typing Basics'
+        ],
         tip: '💡 Now test your knowledge with the Module 1 Quiz!'
       }
     ],
 
     // ==========================================
-    // 2. TEXT LESSON (Reading & Illustrated Guide)
+    // 2. TEXT LESSON & ILLUSTRATED VISUAL PRIMER
     // ==========================================
     textLesson: {
-      heading: 'Introduction to Computers & Mouse Basics Guide',
-      summary: 'The computer mouse is your digital hand inside the screen. Master the monitor, keyboard, computer tower, and the 4 fundamental mouse actions.',
+      heading: 'Computer Basics & Mouse Mastery — Visual Primer & Study Guide',
+      summary: 'Complete illustrated handbook based on "Computer Basics & Mouse Mastery" (15-page Visual Primer) and "Quick Review & Quiz". Learn desk hardware, connectors, ergonomic mouse grip, cursor shapes, and the 6 core mouse actions.',
       downloadUrl: 'media/docs/Computer_Basics_Mouse_Mastery.pdf',
-      downloadLabel: 'Illustrated Student Handbook (PDF, 11 MB) with step-by-step diagrams and offline drills',
+      downloadLabel: 'Illustrated Visual Primer Handbook (.PDF, 11 MB, 15 Pages) — step-by-step diagrams & cheat sheet',
+      reviewDocUrl: 'media/docs/Computer_Class_Review_and_Quiz.docx',
       sections: [
         {
-          subheading: '1. The 4 Main Parts of the Computer Desk',
-          body: 'Every desktop setup consists of four primary parts: (1) The Monitor/Screen which displays all visuals and windows; (2) The Computer Tower which houses the electronic processor and the main Power button; (3) The Keyboard used for typing text, numbers, and commands; and (4) The Mouse which controls your on-screen arrow pointer.'
+          icon: '🛡️',
+          subheading: '1. Three Rules for Stress-Free Learning',
+          body: '• Zero Fear: You cannot break the computer by pressing a button or moving the mouse. Everything is safe.\n• Light Touch: Be gentle. Soft, relaxed finger taps are all the computer needs to understand you.\n• Your Own Pace: Mistakes are welcome here. Confidence grows with every minute of practice.'
         },
         {
-          subheading: '2. Anatomy of the Mouse',
-          body: 'The mouse has three interactive parts: The Left Button (used 90% of the time for normal clicking and selecting), the Scroll Wheel in the center (rolled toward or away from you to travel through long pages), and the Right Button (used to summon a context menu with extra options like Copy, Paste, and Rename).'
+          icon: '🖥️',
+          subheading: '2. Anatomy of a Computer Desk & System Unit Types',
+          body: 'Every workstation has four primary parts: (1) Monitor / Screen — displays text, windows, pictures, and programs; (2) System Unit (Tower / Brain) — performs computations and holds the Power button (comes in Tower PC, Desktop PC, Slim/Mini-Tower, Mini PC, All-in-One, or Laptop); (3) Keyboard — board of keys for typing names, words, numbers, and passwords; (4) Mouse — hand-held device that moves the on-screen arrow.'
         },
         {
-          subheading: '3. Ergonomics & Comfort Grip',
-          body: 'Rest your palm gently on the body of the mouse with your wrist resting flat on the table. Do not squeeze tightly. Keep your index finger on the left button and middle finger on the right button. Glide the mouse across the pad using your forearm rather than twisting your wrist.'
+          icon: '🔌',
+          subheading: '3. The Cable & Port Translator',
+          body: '• Power Button (⏻): Press once firmly to wake the computer or monitor.\n• USB Port (Type-A): Connects your mouse, keyboard, and USB flash drives (most common rectangular port).\n• HDMI / Video Cable: Carries high-definition video and sound from the System Unit to the Monitor.\n• Power Cable: Brings electricity safely from the wall outlet.\n• Audio Jack: Plugs in earphones or headphones to listen to videos and audio lessons.'
         },
         {
-          subheading: '4. The 4 Core Mouse Actions',
-          body: 'Hover: Point the cursor at an icon without clicking. Single Left Click: One gentle press to select a link or button. Double Click: Two rapid taps in place without moving the mouse to launch an application or folder. Drag and Drop: Click and hold down the left button, slide to a destination, and release to move files.'
+          icon: '🖱️',
+          subheading: '4. Anatomy of the Mouse & Ergonomic Grip (DO vs. DON\'T)',
+          body: '• Left Button (Green Dot): Used for 90% of daily actions (index finger rests here).\n• Scroll Wheel (Center): Rolls web pages and documents up and down.\n• Right Button (Orange Dot): Opens helpful hidden context menus (middle finger rests here).\n\n✅ DO: Rest palm gently over the curved body, slide using your forearm (not just wrist), keep index finger relaxed on the left button.\n❌ DON\'T: Never bend your wrist backward, squeeze tightly ("death grip"), or lift the mouse in the air to move it.'
+        },
+        {
+          icon: '🔍',
+          subheading: '5. The Cursor Decoder Ring (How the Arrow Talks to You)',
+          body: '• Standard Pointer (White Arrow): "I am ready. Use me to click and select items."\n• The Web Hand (Pointing Finger): "You are hovering over an internet link! Single-click me to open the page."\n• The Text Cursor (I-Beam): "Click here, and you can begin typing words with your keyboard."\n• The Working Wheel (Spinning Circle): "The computer is thinking. Please wait a second before clicking again."'
+        },
+        {
+          icon: '⚡',
+          subheading: '6. The 6 Core Mouse Actions',
+          body: '1. Point & Hover: Slide flat without pressing to reveal helpful tooltips.\n2. Single Left Click: One crisp tap on the left button (Green) to select a file or open a web link.\n3. Double Click: Freeze your hand on the desk and tap the left button twice very fast ("click-click!") to open folders & apps.\n4. Right Click: Tap the right button (Orange) once with your middle finger to open special options (Copy, Paste, Rename, Delete).\n5. Drag & Drop: Press & hold Left button -> Slide across desk -> Release to move files.\n6. Scrolling: Roll the center wheel toward you (down) or away from you (up) without clicking.'
         }
+      ],
+      cheatSheet: [
+        { physical: 'Slide without clicking', name: 'Hover / Point', intent: 'Look — reveals tooltips & highlights items' },
+        { physical: 'Green Dot (Tap Once)', name: 'Single Left Click', intent: 'Select — highlights an item or opens a web link' },
+        { physical: 'Green Dot (Tap-Tap! Freeze hand)', name: 'Double Click', intent: 'Open — launches desktop programs, files & folders' },
+        { physical: 'Orange Dot (Tap Once)', name: 'Single Right Click', intent: 'Menu — opens extra options (Copy, Paste, Rename)' },
+        { physical: 'Hold Green Dot & Slide', name: 'Drag & Drop', intent: 'Move — picks up and drops an item to a new place' },
+        { physical: 'Roll Center Wheel', name: 'Scroll Wheel', intent: 'Scroll — moves long pages up and down smoothly' }
       ]
     },
 
@@ -149,12 +258,76 @@ const MODULES_DATA = [
       title: 'Pronunciation & Audio Guidance: Computer & Mouse Vocabulary',
       duration: '1 min 45 sec',
       audioUrl: '',
+      vocabulary: [
+        { word: 'Monitor', phonetic: 'Mon-i-tor', meaning: 'The screen that displays pictures and text' },
+        { word: 'Keyboard', phonetic: 'Key-board', meaning: 'Board of keys used to type letters and numbers' },
+        { word: 'Mouse', phonetic: 'Mouse', meaning: 'Hand device that moves the pointer on screen' },
+        { word: 'Cursor', phonetic: 'Cur-sor', meaning: 'The arrow on screen showing where you point' },
+        { word: 'Left Click', phonetic: 'Left Click', meaning: 'One gentle tap with index finger to select' },
+        { word: 'Double Click', phonetic: 'Dou-ble Click', meaning: 'Two fast taps without moving to open' },
+        { word: 'Scroll Wheel', phonetic: 'Scroll Wheel', meaning: 'Center wheel rolled to move pages up and down' },
+        { word: 'Drag and Drop', phonetic: 'Drag and Drop', meaning: 'Hold left button, slide, and release to move items' }
+      ],
       transcription: 'Listen carefully: "Monitor", "Keyboard", "Mouse", "Tower", "Left Click", "Double Click", "Scroll Wheel", "Cursor". Practice repeating each word aloud.',
       speechPrompt: 'Welcome to Lesson 1. The monitor shows your screen. The mouse is your digital hand. Tap the left button once to select, and tap twice fast to open a file.'
     },
 
     // ==========================================
-    // 5. QUIZ (6 Questions from Official Review DOCX)
+    // 5. STUDENT & LOGGED-IN USER MATERIALS (from media/)
+    //    NOTE: Teacher-exclusive Lesson_Plan_and_Teaching_Script.docx is NEVER listed here.
+    // ==========================================
+    studentMaterials: [
+      {
+        id: 'mat_pptx',
+        type: 'presentation',
+        badge: 'PPTX Presentation • 12 Slides',
+        icon: '📊',
+        title: 'Introduction to Computers & Mouse Basics',
+        description: 'Official classroom slide deck covering hardware, ergonomic grip, 4 core actions, and stress-free rules.',
+        file: 'media/docs/Introduction_to_Computers_and_Mouse_Basics.pptx',
+        size: '721 KB',
+        previewTab: 'presentation',
+        previewMode: 'deck'
+      },
+      {
+        id: 'mat_pdf',
+        type: 'pdf',
+        badge: 'Visual Primer PDF • 15 Pages',
+        icon: '📕',
+        title: 'Computer Basics & Mouse Mastery Handbook',
+        description: 'Full-color illustrated visual primer with cable translator, DO/DON\'T posture guide, cursor decoder & cheat sheet.',
+        file: 'media/docs/Computer_Basics_Mouse_Mastery.pdf',
+        size: '11 MB',
+        previewTab: 'presentation',
+        previewMode: 'pdf'
+      },
+      {
+        id: 'mat_review_docx',
+        type: 'docx',
+        badge: 'Review & Quiz DOCX',
+        icon: '📝',
+        title: 'Computer Class Quick Review & Printable Quiz',
+        description: 'Summary cheat-sheet of key terms plus the 6-question review worksheet for classroom or home practice.',
+        file: 'media/docs/Computer_Class_Review_and_Quiz.docx',
+        size: '1.2 MB',
+        previewTab: 'text',
+        previewMode: 'cheatsheet'
+      },
+      {
+        id: 'mat_video',
+        type: 'video',
+        badge: 'MP4 Video • 4m 12s',
+        icon: '🎬',
+        title: 'Computers & Mouse Basics Walkthrough',
+        description: 'Narrated step-by-step video demonstrating desk hardware, grip, clicking rhythm, and desktop navigation.',
+        file: 'media/videos/Computers___Mouse_Basics.mp4',
+        size: '26 MB',
+        previewTab: 'video'
+      }
+    ],
+
+    // ==========================================
+    // 6. QUIZ (6 Questions from Official Review DOCX)
     // ==========================================
     quiz: {
       title: 'Module 1 Knowledge Check: Computer Parts & Mouse Basics',
@@ -236,27 +409,98 @@ const MODULES_DATA = [
     },
 
     // ==========================================
-    // 6. TEACHER GUIDANCE & METHODOLOGY SLOT
+    // 7. TEACHER-EXCLUSIVE GUIDANCE & FULL VERBATIM SCRIPT
+    //    (STRICTLY accessible ONLY to authenticated Teachers!)
     // ==========================================
     teacherNotes: {
+      teacherExclusiveDoc: {
+        title: 'Lesson Plan & Complete Teaching Script (.DOCX)',
+        file: 'media/docs/Lesson_Plan_and_Teaching_Script.docx',
+        size: '644 KB',
+        badge: '🔒 Teacher Exclusive Document'
+      },
+      courseInfo: {
+        audience: 'Adult newcomers, refugees, and seniors with beginner/zero digital and English literacy.',
+        duration: '75–90 Minutes (approx. 35 mins guided demonstration / 45–50 mins interactive practice).',
+        languageLevel: 'Plain, slow, supportive English (CLB 1–3 friendly) with physical modeling & projector cues.',
+        equipment: 'Projector, Windows 10/11 PCs, standard optical mice, green & orange color-dot stickers, printed cheat-sheets.'
+      },
       learningGoal: 'Ensure every learner can identify the 4 primary desk hardware components, adopt an ergonomic mouse posture, execute single and double clicks with correct rhythm, and move icons via drag & drop without fear or strain.',
-      downloads: [
-        { title: 'Lesson Plan & Teaching Script (DOCX)', file: 'media/docs/Lesson_Plan_and_Teaching_Script.docx', icon: '📝' },
-        { title: 'Presentation Slides (PPTX)', file: 'media/docs/Introduction_to_Computers_and_Mouse_Basics.pptx', icon: '📊' },
-        { title: 'Review & Quiz Printable (DOCX)', file: 'media/docs/Computer_Class_Review_and_Quiz.docx', icon: '📄' },
-        { title: 'Student Illustrated Handbook (PDF)', file: 'media/docs/Computer_Basics_Mouse_Mastery.pdf', icon: '📕' }
-      ],
       methodologyTips: [
         'The "Say - Show - Do - Check" Cycle: Never give verbal instruction without physically pointing and demonstrating on the projector screen first. Wait for all eyes, demonstrate twice, then instruct students to do it.',
-        'Radical Patience & Zero Pressure: The neurological link between horizontal hand movement on a desk and vertical pointer movement on screen is unfamiliar for beginners. Never grab their mouse; guide verbally and point to their desk.',
+        'Radical Patience & Zero Pressure: The neurological link between horizontal hand movement on a desk and vertical pointer movement on screen is unfamiliar for beginners. Never grab their mouse unless invited; guide verbally and point to their desk.',
         'The Color-Dot Technique: Place a small green sticker on the Left Mouse Button and an orange sticker on the Right Mouse Button. Refer to the "Green button" whenever language barriers arise.',
-        'Mouse Sensitivity Calibration: Set Windows pointer speed to low or medium before class starts to prevent rapid, frustrating pointer jumps.'
+        'Mouse Sensitivity Calibration: Set Windows pointer speed to low or medium before class starts to prevent erratic jumping.'
+      ],
+      scriptBlocks: [
+        {
+          id: 'block1',
+          title: 'Block 1: Welcome, Comfort Check & Environment Setup',
+          duration: '10–12 Minutes',
+          objective: 'Reduce performance anxiety, ensure ergonomic seating, and establish basic trust.',
+          script: '"Good morning everyone! Welcome to our computer class! Please sit down and make yourself comfortable. Are your feet flat on the floor? Nobody can break the computer today. You cannot break it by pressing a button or moving the mouse. Everything is safe. We start from zero. In this room, mistakes are welcome! If you ever feel lost, confused, or stuck—just raise your hand and I will come to your desk with a smile."',
+          teacherActions: [
+            'Walk around the room and assist anyone whose monitor power is off.',
+            'Ensure every chair and desk space allows free arm movement.'
+          ]
+        },
+        {
+          id: 'block2',
+          title: 'Block 2: Computer Anatomy & Hardware Identification',
+          duration: '15–18 Minutes',
+          objective: 'Learn and pronounce 4 core physical parts; master ergonomic mouse grip.',
+          script: '"A computer is made of 4 main tools: (1) Monitor / Screen — let us say it together: Mon-i-tor! (2) The Tower or System Unit — the brain with the Power button. (3) The Keyboard — used to type names, words, and passwords. (4) The Mouse — it looks like a little mouse with a tail! Rest your palm gently like holding an apple or egg. Index finger rests on the Green dot (left button), middle finger on the Orange dot (right button), wrist flat on the desk."',
+          teacherActions: [
+            'Walk row by row checking for the "death grip" (white knuckles). Remind gently: "Soft hand, like holding an egg."',
+            'Verify index fingers sit on the Green left button, not hovering in air or on the scroll wheel.'
+          ]
+        },
+        {
+          id: 'block3',
+          title: 'Block 3: The 4 Core Mouse Actions',
+          duration: '20–25 Minutes',
+          objective: 'Master Hover, Single Left Click, Double Click, and Drag & Drop.',
+          script: 'Action 1 (Hover): "Slide flat on the mousepad; park over Recycle Bin without clicking—see the tooltip box!" • Action 2 (Left Click): "One gentle tap on the Green button—click!—and let go immediately." • Action 3 (Double Click — The Big Hurdle): "FREEZE your hand on the mousepad! Only your index finger taps: tap-tap, quick like a heartbeat! Click X in the top right to close." • Action 4 (Drag & Drop): "Think of picking up a cup of tea: Point -> Press Green & HOLD -> Slide across desk -> Lift finger to Drop!"',
+          teacherActions: [
+            'Watch for hand shaking during Double Click; remind students to keep their palm heavy and still.',
+            'Remind students who run out of desk space: lift mouse, place back in center, and continue sliding.'
+          ]
+        },
+        {
+          id: 'block4',
+          title: 'Block 4: Interactive Practice & Gamified Drills',
+          duration: '25–30 Minutes',
+          objective: 'Transition from theory to muscle memory through zero-stress games & MS Paint.',
+          script: '"Now we are going to play some games to train our hands. Work at your own pace. There is no timer and no grade. If an exercise feels hard, do it three times. Raise your hand anytime you need help!"',
+          teacherActions: [
+            'Launch WelcomePlace Mouse Precision Lab or recommended browser drills below.',
+            'If offline without browser tools, run the MS Paint 3-step circle & bucket-fill drill.'
+          ]
+        },
+        {
+          id: 'block5',
+          title: 'Block 5: Wrap-Up, Q&A & Positive Reinforcement',
+          duration: '10 Minutes',
+          objective: 'Summarize learning, celebrate progress, and preview Lesson 2 (Keyboard).',
+          script: '"Hands off the mouse and stretch your fingers! Look at what you accomplished today: Monitor, Keyboard, Mouse, Hover, Left Click, Double Click, and Drag & Drop! This is a huge milestone. Next class we will explore the Keyboard—how to type your name, Spacebar, and Backspace."',
+          teacherActions: [
+            'Lead group finger & wrist stretches.',
+            'Administer the 6-question Module 1 Knowledge Check or distribute printed review sheets.'
+          ]
+        }
+      ],
+      practiceTracks: [
+        { track: 'Built-In Lab', tool: 'WelcomePlace Mouse Precision Lab', skill: 'All 6 Core Mouse Skills (24 Levels)', focus: 'Zero-stress gamified drills offline' },
+        { track: 'Online Track A', tool: 'PBCLibrary Mousercise', skill: 'Hover & Precise Pointing', focus: 'Moving inside small squares without clicking' },
+        { track: 'Online Track B', tool: 'DigitalLearn.org', skill: 'Single & Double Clicking', focus: 'Target practice with real-time feedback' },
+        { track: 'Online Track C', tool: 'JigsawPlanet / Solitaire', skill: 'Drag & Drop', focus: 'Holding click while maneuvering across screen' },
+        { track: 'Offline Track', tool: 'MS Paint', skill: 'Complete Mouse Control', focus: 'Draw 5 circles, connect straight lines, Bucket fill colors' }
       ],
       classroomExercises: [
         'Block 1: Welcome & Comfort Check (10-12 min) - Seating ergonomics, screen check, overcoming the fear of breaking the computer.',
         'Block 2: Computer Anatomy & Hardware (15-18 min) - Identifying monitor, tower, keyboard, mouse, and power button.',
         'Block 3: The 4 Core Mouse Actions (20-25 min) - Move & hover, single left click, double click heartbeat rhythm, and drag & drop.',
-        'Block 4: Interactive Practice & Drills (25-30 min) - Using the WelcomePlace Mouse Lab, Mousercise, and simple digital games.',
+        'Block 4: Interactive Practice & Drills (25-30 min) - Using the WelcomePlace Mouse Lab, Mousercise, and MS Paint offline drills.',
         'Block 5: Wrap-Up & Reinforcement (10 min) - Mini-quiz knowledge check, positive encouragement, previewing Keyboard essentials.'
       ],
       verbatimScriptHighlights: [
@@ -270,7 +514,7 @@ const MODULES_DATA = [
         },
         {
           block: 'Block 3 - Drag & Drop Metaphor',
-          quote: '"Think of it like holding a sheet of paper: Press down and hold, slide smoothly across the table, then let go."'
+          quote: '"Think of it like holding a cup of tea: Press down and hold, slide smoothly across the table, then let go."'
         }
       ]
     }
@@ -280,4 +524,3 @@ const MODULES_DATA = [
 if (typeof window !== 'undefined') {
   window.MODULES_DATA = MODULES_DATA;
 }
-

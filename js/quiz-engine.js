@@ -11,7 +11,7 @@ const QuizEngine = {
   userResponses: {}, // { [questionId]: value(s) }
   timerInterval: null,
 
-  init(moduleData, containerElement) {
+  init(moduleData, containerElement = document.getElementById('lesson-content-viewport')) {
     this.activeModule = moduleData;
     this.activeQuiz = moduleData.quiz;
     this.userResponses = {};
@@ -197,8 +197,11 @@ const QuizEngine = {
     const scorePercent = Math.round((correctCount / totalQuestions) * 100);
     const status = scorePercent >= 70 ? 'PASSED' : 'NEEDS REVIEW';
     const activeStudent = StorageService.getActiveStudent();
-    const studentName = activeStudent.nickname || 'Student';
-    const avatarId = activeStudent.avatarId || 'avatar_hijab_teal';
+    const activeTeacher = StorageService.getActiveTeacher();
+    const studentName = activeStudent
+      ? (activeStudent.nickname || 'Student')
+      : (activeTeacher ? `${activeTeacher.name} (Instructor)` : 'Student');
+    const avatarId = (activeStudent && activeStudent.avatarId) ? activeStudent.avatarId : 'avatar_hijab_teal';
 
     // Metric Record Object
     const metricRecord = {

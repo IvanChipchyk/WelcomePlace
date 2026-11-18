@@ -23,7 +23,7 @@ const StorageService = {
         const parsed = JSON.parse(data);
         if (parsed && parsed.nickname) return parsed;
       }
-    } catch (e) {}
+    } catch (e) { }
     return null;
   },
 
@@ -32,49 +32,98 @@ const StorageService = {
     return !!(s && s.isLoggedIn && s.nickname);
   },
 
-  authenticateStudent(nickname, password, avatarId) {
+  authenticateStudent(nickname, password) {
     const cleanNick = (nickname || '').trim();
     const cleanPass = (password || '').trim();
     if (!cleanNick) {
-      return { success: false, error: 'Please enter a student nickname.' };
+      return { success: false, error: 'Please enter your student nickname.' };
+    }
+    if (!cleanPass) {
+      return { success: false, error: 'Please enter your student password.' };
     }
 
     const registered = this.getRegisteredStudents();
-    const existing = registered.find(s => s.nickname.toLowerCase() === cleanNick.toLowerCase());
+    const existing = registered.find(s => (s.nickname || '').toLowerCase() === cleanNick.toLowerCase());
 
-    if (existing) {
-      if (existing.password && existing.password !== cleanPass) {
-        return { 
-          success: false, 
-          error: `Incorrect password for student "${cleanNick}". Please check your password or use a different nickname.` 
-        };
-      }
-      const updated = {
-        ...existing,
-        password: cleanPass || existing.password || '123',
-        avatarId: avatarId || existing.avatarId || 'avatar_hijab_teal',
-        isLoggedIn: true
+    if (!existing) {
+      return {
+        success: false,
+        error: 'Student account not found. Only the Administrator can create student accounts. Please contact your Administrator or Instructor.'
       };
-      this.setActiveStudent(updated);
-      return { success: true, student: updated, isNew: false };
-    } else {
-      const newStudent = {
-        nickname: cleanNick,
-        password: cleanPass || '123',
-        avatarId: avatarId || 'avatar_hijab_teal',
-        isLoggedIn: true,
-        createdAt: new Date().toISOString()
-      };
-      this.setActiveStudent(newStudent);
-      return { success: true, student: newStudent, isNew: true };
     }
+
+    if ((existing.password || '') !== cleanPass) {
+      return {
+        success: false,
+        error: `Incorrect password for student "${existing.nickname}". Please check your password or contact the Administrator.`
+      };
+    }
+
+    const sessionStudent = {
+      ...existing,
+      isLoggedIn: true
+    };
+    this.setActiveStudent(sessionStudent);
+    return { success: true, student: sessionStudent, isNew: false };
   },
 
   setActiveStudent(studentObj) {
     localStorage.setItem(STORAGE_KEYS.ACTIVE_STUDENT, JSON.stringify(studentObj));
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, studentObj.nickname);
-    this.addStudentToRegistry(studentObj);
     return studentObj;
+  },
+
+  createStudentAccount({ nickname, password, avatarId }) {
+    const cleanNick = (nickname || '').trim();
+    const cleanPass = (password || '').trim();
+    if (!cleanNick || !cleanPass) {
+      return { success: false, error: 'Student nickname and password are required.' };
+    }
+
+    const list = this.getRegisteredStudents();
+    if (list.some(s => (s.nickname || '').toLowerCase() === cleanNick.toLowerCase())) {
+      return { success: false, error: `Student account "${cleanNick}" already exists.` };
+    }
+
+    const newStudent = {
+      nickname: cleanNick,
+      password: cleanPass,
+      avatarId: avatarId || 'avatar_hijab_teal',
+      isLoggedIn: false,
+      createdAt: new Date().toISOString()
+    };
+
+    this.saveRegisteredStudent(newStudent);
+    return { success: true, student: newStudent };
+  },
+
+  updateStudentAccount(originalNickname, { password, avatarId }) {
+    const cleanOrig = (originalNickname || '').trim().toLowerCase();
+    const list = this.getRegisteredStudents();
+    const idx = list.findIndex(s => (s.nickname || '').trim().toLowerCase() === cleanOrig);
+    if (idx < 0) {
+      return { success: false, error: 'Student account not found.' };
+    }
+
+    const updated = {
+      ...list[idx],
+      password: (password || '').trim() || list[idx].password || '123',
+      avatarId: avatarId || list[idx].avatarId || 'avatar_hijab_teal',
+      isLoggedIn: false
+    };
+    list[idx] = updated;
+    localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(list));
+
+    const active = this.getActiveStudent();
+    if (active && (active.nickname || '').trim().toLowerCase() === cleanOrig) {
+      this.setActiveStudent({ ...active, password: updated.password, avatarId: updated.avatarId });
+    }
+
+    if (typeof SqliteService !== 'undefined') {
+      SqliteService.saveStudent(updated).catch(() => { });
+    }
+
+    return { success: true, student: updated };
   },
 
   addStudentToRegistry(studentObj) {
@@ -94,7 +143,7 @@ const StorageService = {
           console.warn('Failed to save student to Turso SQLite:', err);
         });
       }
-    } catch (e) {}
+    } catch (e) { }
   },
 
   saveRegisteredStudent(studentObj) {
@@ -108,7 +157,7 @@ const StorageService = {
       }
       localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(list));
       if (typeof SqliteService !== 'undefined') {
-        SqliteService.saveStudent(studentObj).catch(() => {});
+        SqliteService.saveStudent(studentObj).catch(() => { });
       }
       return list;
     } catch (e) {
@@ -120,7 +169,7 @@ const StorageService = {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
       if (data !== null) return JSON.parse(data);
-    } catch (e) {}
+    } catch (e) { }
     return [];
   },
 
@@ -135,7 +184,7 @@ const StorageService = {
       let list = this.getRegisteredStudents();
       list = list.filter(s => (s.nickname || '').toLowerCase().trim() !== clean);
       localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(list));
-      
+
       const active = this.getActiveStudent();
       if (active && (active.nickname || '').toLowerCase().trim() === clean) {
         this.logoutStudent();
@@ -152,11 +201,11 @@ const StorageService = {
           });
           localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(filtered));
         }
-      } catch (err) {}
+      } catch (err) { }
 
       // Also delete from Turso SQLite database
       if (typeof SqliteService !== 'undefined') {
-        SqliteService.deleteStudent(clean).catch(() => {});
+        SqliteService.deleteStudent(clean).catch(() => { });
       }
 
       return list;
@@ -180,7 +229,7 @@ const StorageService = {
 
       if (Array.isArray(students)) {
         localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(students));
-        
+
         // Keep active student profile in sync if currently logged in
         const active = this.getActiveStudent();
         if (active && active.isLoggedIn) {
@@ -228,13 +277,19 @@ const StorageService = {
       if (Array.isArray(data.students)) {
         localStorage.setItem(STORAGE_KEYS.STUDENT_ACCOUNTS, JSON.stringify(data.students));
         if (typeof SqliteService !== 'undefined') {
-          data.students.forEach(s => SqliteService.saveStudent(s).catch(() => {}));
+          data.students.forEach(s => SqliteService.saveStudent(s).catch(() => { }));
         }
       }
       if (Array.isArray(data.teachers)) {
         localStorage.setItem(STORAGE_KEYS.TEACHER_ACCOUNTS, JSON.stringify(data.teachers));
         if (typeof SqliteService !== 'undefined') {
-          data.teachers.forEach(t => SqliteService.saveTeacher(t).catch(() => {}));
+          data.teachers.forEach(t => SqliteService.saveTeacher(t).catch(() => { }));
+        }
+      }
+      if (Array.isArray(data.metrics)) {
+        localStorage.setItem(STORAGE_KEYS.METRICS_LOGS, JSON.stringify(data.metrics));
+        if (typeof SqliteService !== 'undefined') {
+          data.metrics.forEach(m => SqliteService.saveMetric(m).catch(() => { }));
         }
       }
       return { success: true };
@@ -250,7 +305,7 @@ const StorageService = {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.TEACHER_ACCOUNTS);
       if (data) return JSON.parse(data);
-    } catch (e) {}
+    } catch (e) { }
 
     // Initial default personalized teacher accounts
     const seed = [
@@ -306,10 +361,47 @@ const StorageService = {
     this.saveTeacherAccounts(list);
 
     if (typeof SqliteService !== 'undefined') {
-      SqliteService.saveTeacher(newTeacher).catch(() => {});
+      SqliteService.saveTeacher(newTeacher).catch(() => { });
     }
 
     return { success: true, teacher: newTeacher };
+  },
+
+  updateTeacherAccount(id, updates) {
+    const list = this.getTeacherAccounts();
+    const idx = list.findIndex(t => t.id === id);
+    if (idx < 0) {
+      return { success: false, error: 'Teacher account not found.' };
+    }
+    const cleanPass = (updates.password || '').trim();
+    const cleanName = (updates.name || '').trim();
+    const cleanUser = (updates.username || '').trim().toLowerCase();
+    const cleanSpec = (updates.specialization || '').trim();
+
+    if (cleanUser && list.some((t, i) => i !== idx && t.username.toLowerCase() === cleanUser)) {
+      return { success: false, error: `Username "${cleanUser}" is already taken.` };
+    }
+
+    const updated = {
+      ...list[idx],
+      name: cleanName || list[idx].name,
+      username: cleanUser || list[idx].username,
+      password: cleanPass || list[idx].password,
+      specialization: cleanSpec || list[idx].specialization
+    };
+    list[idx] = updated;
+    this.saveTeacherAccounts(list);
+
+    const active = this.getActiveTeacher();
+    if (active && active.id === id) {
+      this.setActiveTeacher(updated);
+    }
+
+    if (typeof SqliteService !== 'undefined') {
+      SqliteService.saveTeacher(updated).catch(() => { });
+    }
+
+    return { success: true, teacher: updated };
   },
 
   deleteTeacherAccount(id) {
@@ -318,7 +410,7 @@ const StorageService = {
     this.saveTeacherAccounts(list);
 
     if (typeof SqliteService !== 'undefined') {
-      SqliteService.deleteTeacher(id).catch(() => {});
+      SqliteService.deleteTeacher(id).catch(() => { });
     }
 
     const active = this.getActiveTeacher();
@@ -332,7 +424,7 @@ const StorageService = {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ACTIVE_TEACHER);
       if (data) return JSON.parse(data);
-    } catch (e) {}
+    } catch (e) { }
     return null;
   },
 
@@ -348,12 +440,15 @@ const StorageService = {
   authenticateTeacher(loginIdentifier, password) {
     const cleanId = (loginIdentifier || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
+    if (!cleanId || !cleanPass) {
+      return { success: false, error: 'Please enter your teacher username and password.' };
+    }
 
-    // Check against registered personalized teacher accounts
+    // Check strictly against registered personalized teacher accounts created by the Administrator
     const list = this.getTeacherAccounts();
-    const found = list.find(t => 
-      t.username.toLowerCase() === cleanId || 
-      t.name.toLowerCase() === cleanId
+    const found = list.find(t =>
+      (t.username || '').toLowerCase() === cleanId ||
+      (t.name || '').toLowerCase() === cleanId
     );
 
     if (found) {
@@ -361,23 +456,11 @@ const StorageService = {
         this.setActiveTeacher(found);
         return { success: true, teacher: found };
       } else {
-        return { success: false, error: 'Incorrect teacher password.' };
+        return { success: false, error: 'Incorrect teacher password. Please contact the Administrator if you forgot your password.' };
       }
     }
 
-    // Fallback: master teacher PIN 1234
-    if (cleanPass === '1234' || cleanId === '1234') {
-      const fallbackTeacher = {
-        id: 'TCH_MASTER',
-        name: 'Lead Instructor',
-        username: 'instructor',
-        specialization: 'General Digital Literacy'
-      };
-      this.setActiveTeacher(fallbackTeacher);
-      return { success: true, teacher: fallbackTeacher };
-    }
-
-    return { success: false, error: 'Teacher account not found. Please check your username or contact Administrator.' };
+    return { success: false, error: 'Teacher account not found. Only the Administrator can create teacher accounts.' };
   },
 
   getCurrentUser() {
@@ -405,11 +488,7 @@ const StorageService = {
     localStorage.setItem(STORAGE_KEYS.CURRENT_ROLE, role);
   },
 
-  // PIN codes
-  getTeacherPin() {
-    return '1234';
-  },
-
+  // Admin PIN code
   getAdminPin() {
     return '9999';
   },
@@ -462,7 +541,7 @@ const StorageService = {
 
     // Delete from Turso SQLite database
     if (typeof SqliteService !== 'undefined') {
-      SqliteService.deleteMetric(id).catch(() => {});
+      SqliteService.deleteMetric(id).catch(() => { });
     }
     return all;
   },
@@ -472,7 +551,7 @@ const StorageService = {
 
     // Clear all in Turso SQLite database
     if (typeof SqliteService !== 'undefined') {
-      SqliteService.clearAllMetrics().catch(() => {});
+      SqliteService.clearAllMetrics().catch(() => { });
     }
   }
 };

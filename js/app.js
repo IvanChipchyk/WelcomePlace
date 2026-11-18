@@ -9,18 +9,41 @@ const App = {
   currentModule: null,
   activeLab: null, // 'mouse' | 'typing' | null
   activeLessonTab: 'presentation',
+  presentationViewMode: 'deck', // 'deck' | 'pdf'
   currentSlideIndex: 0,
   pendingRoleSwitch: null,
+  isAdminAuthenticated: false,
   selectedAvatarId: 'avatar_hijab_teal',
   adminActiveTab: 'metrics', // 'metrics' | 'teachers' | 'students'
   adminStudentAvatarId: 'avatar_hijab_teal',
+  adminEditStudentAvatarId: 'avatar_hijab_teal',
   adminMetricFilterStudent: 'ALL',
   adminMetricFilterType: 'ALL',
   adminMetricFilterStatus: 'ALL',
   adminMetricSearchQuery: '',
 
+  isTeacherAuthenticated() {
+    return this.currentRole === 'teacher' && Boolean(StorageService.getActiveTeacher());
+  },
+
+  isUserAuthenticated() {
+    if (this.currentRole === 'admin') return this.isAdminAuthenticated;
+    if (this.currentRole === 'teacher') return Boolean(StorageService.getActiveTeacher());
+    return StorageService.isStudentLoggedIn();
+  },
+
   async init() {
     this.currentRole = StorageService.getCurrentRole();
+    // Enforce authentication on fresh page load: never auto-enter Admin without PIN or Teacher without session
+    if (this.currentRole === 'admin' && !this.isAdminAuthenticated) {
+      this.currentRole = 'student';
+      StorageService.setCurrentRole('student');
+    }
+    if (this.currentRole === 'teacher' && !StorageService.getActiveTeacher()) {
+      this.currentRole = 'student';
+      StorageService.setCurrentRole('student');
+    }
+
     const student = StorageService.getActiveStudent();
     if (student && student.avatarId) {
       this.selectedAvatarId = student.avatarId;
@@ -32,6 +55,7 @@ const App = {
     // 1. Synchronize with Turso SQLite cloud database
     const sqliteSynced = await StorageService.syncWithSqlite();
     if (sqliteSynced) {
+      this.updateRoleUI();
       this.render();
     }
   },
@@ -84,10 +108,47 @@ const App = {
         if (e.target === createStudentModal) this.closeCreateStudentModal();
       });
     }
+
+    // Close Admin Edit Student modal
+    const editStudentModal = document.getElementById('admin-edit-student-modal');
+    if (editStudentModal) {
+      editStudentModal.addEventListener('click', (e) => {
+        if (e.target === editStudentModal) this.closeEditStudentModal();
+      });
+    }
+
+    // Close Admin Edit Teacher modal
+    const editTeacherModal = document.getElementById('admin-edit-teacher-modal');
+    if (editTeacherModal) {
+      editTeacherModal.addEventListener('click', (e) => {
+        if (e.target === editTeacherModal) this.closeEditTeacherModal();
+      });
+    }
+
+    // Keyboard navigation for Presentation slides
+    document.addEventListener('keydown', (e) => {
+      if (
+        this.currentModule &&
+        this.activeLessonTab === 'presentation' &&
+        this.presentationViewMode === 'deck' &&
+        !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target && e.target.tagName) || '')
+      ) {
+        if (e.key === 'ArrowRight') this.nextSlide();
+        if (e.key === 'ArrowLeft') this.prevSlide();
+      }
+    });
+  },
+
+  togglePasswordVisibility(inputId, btnEl) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    if (btnEl) btnEl.textContent = isHidden ? '🙈' : '👁️';
   },
 
   // ==========================================
-  // Student Profile, Login & Avatar Selection
+  // Student Profile & Sign In (Admin-Created Only)
   // ==========================================
   handleUserBadgeClick() {
     if (this.currentRole === 'student') {
@@ -99,18 +160,28 @@ const App = {
     const modal = document.getElementById('student-login-modal');
     if (!modal) return;
 
-    const student = (typeof StorageService !== 'undefined') 
-      ? StorageService.getActiveStudent() 
+    const student = (typeof StorageService !== 'undefined' && StorageService.isStudentLoggedIn())
+      ? StorageService.getActiveStudent()
       : null;
 
     const nickField = document.getElementById('student-nickname-field');
     const passField = document.getElementById('student-password-field');
+    const previewEl = document.getElementById('student-login-avatar-preview');
 
     if (nickField) nickField.value = student ? (student.nickname || '') : '';
-    if (passField) passField.value = student ? (student.password || '') : '';
-    this.selectedAvatarId = (student && student.avatarId) ? student.avatarId : 'avatar_hijab_teal';
+    if (passField) {
+      passField.value = '';
+      passField.type = 'password';
+    }
+    if (previewEl) {
+      if (student && typeof AvatarsService !== 'undefined') {
+        previewEl.innerHTML = `${AvatarsService.getSvgHtml(student.avatarId || 'avatar_hijab_teal', 32)} <span>Signing in as <strong>${student.nickname}</strong></span>`;
+        previewEl.style.display = 'flex';
+      } else {
+        previewEl.style.display = 'none';
+      }
+    }
 
-    this.renderAvatarPicker();
     this.renderRecentStudentsList();
 
     modal.classList.add('open');
@@ -122,52 +193,18 @@ const App = {
     if (modal) modal.classList.remove('open');
   },
 
-  renderAvatarPicker() {
-    const grid = document.getElementById('avatar-picker-grid');
-    if (!grid) return;
-
-    const avatars = (typeof AvatarsService !== 'undefined') ? AvatarsService.getAll() : [];
-    let html = '';
-
-    avatars.forEach(av => {
-      const isSelected = av.id === this.selectedAvatarId;
-      const svgIcon = (typeof AvatarsService !== 'undefined') ? AvatarsService.getSvgHtml(av.id, 54) : '';
-      html += `
-        <div 
-          class="avatar-card-radio ${isSelected ? 'selected' : ''}" 
-          id="avatar-card-${av.id}"
-          onclick="App.selectAvatar('${av.id}')"
-          title="${av.name}"
-        >
-          ${svgIcon}
-          <span class="avatar-title-label">${av.name}</span>
-        </div>
-      `;
-    });
-
-    grid.innerHTML = html;
-  },
-
-  selectAvatar(avatarId) {
-    this.selectedAvatarId = avatarId;
-    document.querySelectorAll('.avatar-card-radio').forEach(card => {
-      card.classList.remove('selected');
-    });
-    const chosen = document.getElementById(`avatar-card-${avatarId}`);
-    if (chosen) chosen.classList.add('selected');
-  },
-
   renderRecentStudentsList() {
     const section = document.getElementById('recent-students-section');
     const container = document.getElementById('recent-students-chips');
     if (!section || !container) return;
 
-    const registered = (typeof StorageService !== 'undefined') 
-      ? StorageService.getRegisteredStudents() 
+    const registered = (typeof StorageService !== 'undefined')
+      ? StorageService.getRegisteredStudents()
       : [];
 
     if (!registered || registered.length === 0) {
-      section.style.display = 'none';
+      section.style.display = 'block';
+      container.innerHTML = '<span style="font-size: 0.82rem; color: var(--text-light);">No student profiles registered yet. Ask the Administrator to create your account.</span>';
       return;
     }
 
@@ -177,8 +214,9 @@ const App = {
       const iconSvg = (typeof AvatarsService !== 'undefined')
         ? AvatarsService.getSvgHtml(st.avatarId || 'avatar_hijab_teal', 20)
         : '';
+      const safeNick = encodeURIComponent(st.nickname || '');
       html += `
-        <button type="button" class="recent-student-pill" onclick="App.quickSelectStudent('${st.nickname}')">
+        <button type="button" class="recent-student-pill" onclick="App.quickSelectStudent(decodeURIComponent('${safeNick}'))">
           ${iconSvg}
           <span>${st.nickname}</span>
         </button>
@@ -189,13 +227,20 @@ const App = {
 
   quickSelectStudent(nickname) {
     const list = StorageService.getRegisteredStudents();
-    const found = list.find(s => s.nickname.toLowerCase() === nickname.toLowerCase());
+    const found = list.find(s => (s.nickname || '').toLowerCase() === (nickname || '').toLowerCase());
     if (found) {
       const nickField = document.getElementById('student-nickname-field');
       const passField = document.getElementById('student-password-field');
+      const previewEl = document.getElementById('student-login-avatar-preview');
       if (nickField) nickField.value = found.nickname;
-      if (passField) passField.value = found.password || '123';
-      this.selectAvatar(found.avatarId || 'avatar_hijab_teal');
+      if (passField) {
+        passField.value = '';
+        passField.focus();
+      }
+      if (previewEl && typeof AvatarsService !== 'undefined') {
+        previewEl.innerHTML = `${AvatarsService.getSvgHtml(found.avatarId || 'avatar_hijab_teal', 32)} <span>Selected profile: <strong>${found.nickname}</strong> — enter your password</span>`;
+        previewEl.style.display = 'flex';
+      }
     }
   },
 
@@ -205,9 +250,8 @@ const App = {
 
     const nickname = (nickField ? nickField.value : '').trim();
     const password = (passField ? passField.value : '').trim();
-    const avatarId = this.selectedAvatarId || 'avatar_hijab_teal';
 
-    const authRes = StorageService.authenticateStudent(nickname, password, avatarId);
+    const authRes = StorageService.authenticateStudent(nickname, password);
     if (!authRes.success) {
       alert(authRes.error);
       if (passField) {
@@ -218,13 +262,15 @@ const App = {
     }
 
     this.closeStudentLoginModal();
-    this.updateRoleUI();
-    this.render();
+    this.setRole('student');
   },
 
   logoutStudent() {
     if (confirm('Log out of this student account? This prevents unauthorized users from accessing your records.')) {
       StorageService.logoutStudent();
+      this.cleanupLabs();
+      this.currentModule = null;
+      this.activeLab = null;
       this.updateRoleUI();
       this.render();
     }
@@ -237,11 +283,17 @@ const App = {
     if (targetRole === this.currentRole) return;
 
     if (targetRole === 'student') {
+      if (this.currentRole === 'admin') {
+        this.isAdminAuthenticated = false;
+      }
       this.setRole('student');
       return;
     }
 
     if (targetRole === 'teacher') {
+      if (this.currentRole === 'admin') {
+        this.isAdminAuthenticated = false;
+      }
       const activeTeacher = StorageService.getActiveTeacher();
       if (activeTeacher) {
         this.setRole('teacher');
@@ -252,8 +304,12 @@ const App = {
     }
 
     if (targetRole === 'admin') {
-      this.pendingRoleSwitch = 'admin';
-      this.openPinModal('admin');
+      if (this.isAdminAuthenticated) {
+        this.setRole('admin');
+      } else {
+        this.pendingRoleSwitch = 'admin';
+        this.openPinModal('admin');
+      }
       return;
     }
   },
@@ -340,8 +396,16 @@ const App = {
   logoutTeacher() {
     if (confirm('Log out of this personalized teacher account?')) {
       StorageService.logoutTeacher();
+      this.cleanupLabs();
+      this.currentModule = null;
+      this.activeLab = null;
       this.setRole('student');
     }
+  },
+
+  exitAdmin() {
+    this.isAdminAuthenticated = false;
+    this.setRole('student');
   },
 
   openPinModal(role) {
@@ -372,6 +436,7 @@ const App = {
 
     if (this.pendingRoleSwitch === 'admin') {
       if (pin === StorageService.getAdminPin()) {
+        this.isAdminAuthenticated = true;
         this.setRole('admin');
         this.closePinModal();
       } else {
@@ -385,6 +450,8 @@ const App = {
   setRole(role) {
     this.cleanupLabs();
     this.activeLab = null;
+    this.currentModule = null;
+    this.activeLessonTab = 'presentation';
     this.currentRole = role;
     StorageService.setCurrentRole(role);
     this.updateRoleUI();
@@ -404,9 +471,15 @@ const App = {
     const badgeText = document.getElementById('active-role-text');
     const avatarSlot = document.getElementById('header-avatar-slot');
     const logoutBtn = document.getElementById('student-logout-header-btn');
+    const labsNav = document.getElementById('header-labs-nav');
     const student = StorageService.getActiveStudent();
     const isStudentLogged = StorageService.isStudentLoggedIn();
     const activeTeacher = StorageService.getActiveTeacher();
+    const isAuth = this.isUserAuthenticated();
+
+    if (labsNav) {
+      labsNav.style.display = (isAuth && this.currentRole !== 'admin') ? 'flex' : 'none';
+    }
 
     if (this.currentRole === 'student') {
       if (isStudentLogged) {
@@ -421,7 +494,7 @@ const App = {
           logoutBtn.onclick = () => App.logoutStudent();
         }
       } else {
-        if (badgeText) badgeText.innerHTML = `👤 Learner: <em>Not Logged In</em>`;
+        if (badgeText) badgeText.innerHTML = `🔒 Learner: <em>Not Signed In</em>`;
         if (avatarSlot) avatarSlot.style.display = 'none';
         if (logoutBtn) {
           logoutBtn.style.display = 'inline-flex';
@@ -432,13 +505,13 @@ const App = {
     } else if (this.currentRole === 'teacher') {
       if (avatarSlot) avatarSlot.style.display = 'none';
       if (badgeText) {
-        const teacherName = activeTeacher ? activeTeacher.name : 'Instructor';
+        const teacherName = activeTeacher ? activeTeacher.name : 'Not Signed In';
         badgeText.innerHTML = `🧑‍🏫 Teacher: <strong>${teacherName}</strong>`;
       }
       if (logoutBtn) {
         logoutBtn.style.display = 'inline-flex';
-        logoutBtn.innerHTML = '<span>🚪</span><span>Log Out (Teacher)</span>';
-        logoutBtn.onclick = () => App.logoutTeacher();
+        logoutBtn.innerHTML = activeTeacher ? '<span>🚪</span><span>Log Out (Teacher)</span>' : '<span>🔑</span><span>Teacher Sign In</span>';
+        logoutBtn.onclick = () => activeTeacher ? App.logoutTeacher() : App.openTeacherLoginModal();
       }
     } else {
       // Administrator
@@ -449,7 +522,7 @@ const App = {
       if (logoutBtn) {
         logoutBtn.style.display = 'inline-flex';
         logoutBtn.innerHTML = '<span>🚪</span><span>Exit Admin</span>';
-        logoutBtn.onclick = () => App.setRole('student');
+        logoutBtn.onclick = () => App.exitAdmin();
       }
     }
   },
@@ -462,9 +535,27 @@ const App = {
     if (!mainContainer) return;
 
     if (this.currentRole === 'admin') {
+      if (!this.isAdminAuthenticated) {
+        this.currentRole = 'student';
+        StorageService.setCurrentRole('student');
+        this.updateRoleUI();
+        this.renderModulesList(mainContainer);
+        return;
+      }
       this.cleanupLabs();
       this.renderAdminDashboard(mainContainer);
-    } else if (this.activeLab === 'mouse') {
+      return;
+    }
+
+    if (!this.isUserAuthenticated()) {
+      this.cleanupLabs();
+      this.activeLab = null;
+      this.currentModule = null;
+      this.renderModulesList(mainContainer);
+      return;
+    }
+
+    if (this.activeLab === 'mouse') {
       if (typeof MouseTrainer !== 'undefined') MouseTrainer.init(mainContainer);
     } else if (this.activeLab === 'typing') {
       if (typeof TypingTrainer !== 'undefined') TypingTrainer.init(mainContainer, 0);
@@ -489,7 +580,7 @@ const App = {
   },
 
   openMouseTrainer() {
-    if (this.currentRole === 'student' && !StorageService.isStudentLoggedIn()) {
+    if (!this.isUserAuthenticated()) {
       this.openStudentLoginModal();
       return;
     }
@@ -503,7 +594,7 @@ const App = {
   },
 
   openTypingTrainer(lessonIdx = 0) {
-    if (this.currentRole === 'student' && !StorageService.isStudentLoggedIn()) {
+    if (!this.isUserAuthenticated()) {
       this.openStudentLoginModal();
       return;
     }
@@ -517,25 +608,49 @@ const App = {
   },
 
   // ==========================================
-  // View 1: Modules Catalog List
+  // View 1: Modules Catalog & Media Hub
   // ==========================================
   renderModulesList(container = document.getElementById('app-main-content')) {
     this.currentModule = null;
 
-    const isTeacher = this.currentRole === 'teacher';
-    const isStudentLogged = StorageService.isStudentLoggedIn();
+    const isTeacher = this.isTeacherAuthenticated();
+    const isStudentLogged = this.currentRole === 'student' && StorageService.isStudentLoggedIn();
+    const isAuth = this.isUserAuthenticated();
     const student = StorageService.getActiveStudent();
+    const activeTeacher = StorageService.getActiveTeacher();
 
     let heroHtml = '';
 
     if (isTeacher) {
       heroHtml = `
-        <div class="welcome-hero" style="background: linear-gradient(135deg, #7c2d12 0%, #9a3412 50%, #c2410c 100%);">
+        <div class="welcome-hero welcome-hero-teacher">
           <div class="welcome-hero-content">
-            <h2>🧑‍🏫 Teacher Portal: Literacy Curriculum</h2>
+            <div class="hero-pill">🧑‍🏫 Authenticated Instructor Session</div>
+            <h2>Welcome, ${activeTeacher.name}!</h2>
             <p>
-              Preview learning modules with integrated pedagogical methodology notes and classroom guides.
+              Full access to all learning modules, classroom presentations, student media, and your <strong>Teacher-Exclusive Lesson Plan & Verbatim Teaching Script</strong>.
             </p>
+            <div class="student-identity-bar">
+              <div style="display: flex; align-items: center; gap: 0.85rem;">
+                <div class="hero-teacher-avatar">🧑‍🏫</div>
+                <div>
+                  <div style="font-size: 1.08rem; font-weight: 800; color: white;">
+                    ${activeTeacher.name} (@${activeTeacher.username})
+                  </div>
+                  <div style="font-size: 0.82rem; color: #fed7aa;">
+                    ${activeTeacher.specialization || 'Digital Literacy Instructor'} • Teacher Guide Unlocked
+                  </div>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                class="btn-secondary" 
+                style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full); font-size: 0.86rem;"
+                onclick="App.openModule('mod_mouse', 'teacher_notes')"
+              >
+                <span>📖 Open Teacher Script & Plan</span>
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -543,12 +658,13 @@ const App = {
       heroHtml = `
         <div class="welcome-hero">
           <div class="welcome-hero-content">
-            <h2>👋 Welcome, ${student.nickname || 'Learner'}!</h2>
+            <div class="hero-pill">🇨🇦 WelcomePlace Canada • Classroom Unlocked</div>
+            <h2>👋 Welcome back, ${student.nickname || 'Learner'}!</h2>
             <p>
-              Learn computer essentials at your own pace with interactive slides, videos, pronunciation audio, and quizzes.
+              Explore interactive presentations, step-by-step videos, illustrated PDF guides, hands-on practice labs, and quizzes at your own pace.
             </p>
             
-            <div class="student-identity-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+            <div class="student-identity-bar" style="justify-content: space-between;">
               <div style="display: flex; align-items: center; gap: 0.85rem;">
                 ${AvatarsService.getSvgHtml(student.avatarId || 'avatar_hijab_teal', 52)}
                 <div>
@@ -556,7 +672,7 @@ const App = {
                     ${student.nickname || 'Student'}
                   </div>
                   <div style="font-size: 0.82rem; color: #bae6fd;">
-                    Active Student Profile (Protected)
+                    Signed-In Student Profile • All Materials Unlocked
                   </div>
                 </div>
               </div>
@@ -565,15 +681,15 @@ const App = {
                 <button 
                   type="button" 
                   class="btn-secondary" 
-                  style="padding: 0.55rem 1rem; border-radius: var(--radius-full); font-size: 0.88rem;"
-                  onclick="App.openStudentLoginModal()"
+                  style="padding: 0.55rem 1rem; border-radius: var(--radius-full); font-size: 0.86rem;"
+                  onclick="App.openModule('mod_mouse', 'presentation', 'deck')"
                 >
-                  <span>⚙️ Switch / Edit Profile</span>
+                  <span>📊 Open Presentation</span>
                 </button>
                 <button 
                   type="button" 
                   class="btn-danger" 
-                  style="padding: 0.55rem 1rem; border-radius: var(--radius-full); font-size: 0.88rem; background: #fee2e2; border-color: #fca5a5;"
+                  style="padding: 0.55rem 1rem; border-radius: var(--radius-full); font-size: 0.86rem; background: #fee2e2; border-color: #fca5a5;"
                   onclick="App.logoutStudent()"
                 >
                   <span>🚪 Log Out</span>
@@ -584,27 +700,144 @@ const App = {
         </div>
       `;
     } else {
-      // Logged out student state - protects account
+      // Unauthenticated visitor — strict access lock
       heroHtml = `
-        <div class="welcome-hero" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%);">
+        <div class="welcome-hero welcome-hero-locked">
           <div class="welcome-hero-content">
-            <h2>🔒 Student Profile Locked</h2>
+            <div class="hero-pill">🔒 Protected Classroom Access</div>
+            <h2>Welcome to WelcomePlace Canada</h2>
             <p>
-              Please sign in with your nickname and password to access your modules, take quizzes, and protect your personal learning records.
+              Presentations, classroom files, video lessons, and interactive practice labs are available <strong>only to signed-in users</strong>. Student and teacher accounts are created exclusively by the Administrator.
             </p>
             
-            <div style="margin-top: 1.25rem;">
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem;">
               <button 
                 type="button" 
                 class="download-txt-cta" 
-                style="max-width: 320px; background: #38bdf8; color: #0f172a; font-weight: 800;"
+                style="width: auto; padding: 0.85rem 1.5rem; background: #38bdf8; color: #0f172a; font-weight: 800;"
                 onclick="App.openStudentLoginModal()"
               >
-                <span>🔑 Sign In / Choose Avatar</span>
+                <span>🔑 Student Sign In</span>
                 <span>➜</span>
+              </button>
+              <button 
+                type="button" 
+                class="btn-secondary" 
+                style="padding: 0.85rem 1.35rem; background: rgba(255,255,255,0.14); color: #ffffff; border-color: rgba(255,255,255,0.35);"
+                onclick="App.requestRoleChange('teacher')"
+              >
+                <span>🧑‍🏫 Teacher Sign In</span>
+              </button>
+              <button 
+                type="button" 
+                class="btn-secondary" 
+                style="padding: 0.85rem 1.35rem; background: rgba(255,255,255,0.08); color: #e2e8f0; border-color: rgba(255,255,255,0.22);"
+                onclick="App.requestRoleChange('admin')"
+              >
+                <span>🛡️ Admin Portal</span>
               </button>
             </div>
           </div>
+        </div>
+      `;
+    }
+
+    // Build Media & Presentations Library section ONLY for authenticated users
+    let mediaHubHtml = '';
+    if (isAuth && MODULES_DATA.length > 0) {
+      const mod = MODULES_DATA[0];
+      const materials = mod.studentMaterials || [];
+      const teacherExclusiveDoc = (isTeacher && mod.teacherNotes && mod.teacherNotes.teacherExclusiveDoc)
+        ? mod.teacherNotes.teacherExclusiveDoc
+        : null;
+
+      mediaHubHtml = `
+        <div class="section-title-wrap" style="margin-top: 2.25rem;">
+          <h2 class="section-title">
+            <span>📂</span>
+            <span>Presentations & Classroom Media Library</span>
+          </h2>
+          <span style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600;">
+            ${isTeacher ? 'Student materials + Teacher-Exclusive Lesson Script' : 'Unlocked for signed-in users'}
+          </span>
+        </div>
+
+        <div class="media-files-grid">
+          ${materials.map(item => `
+            <div class="media-file-card">
+              <div class="media-file-top">
+                <div class="media-file-icon">${item.icon}</div>
+                <span class="media-file-badge">${item.badge}</span>
+              </div>
+              <h3 class="media-file-title">${item.title}</h3>
+              <p class="media-file-desc">${item.description}</p>
+              <div class="media-file-meta">📦 Size: ${item.size}</div>
+              <div class="media-file-actions">
+                <button
+                  type="button"
+                  class="btn-primary-sm"
+                  onclick="App.openModule('${mod.id}', '${item.previewTab || 'presentation'}', '${item.previewMode || 'deck'}')"
+                >
+                  <span>👁️ Open in App</span>
+                </button>
+                <a
+                  href="${item.file}"
+                  download
+                  class="btn-secondary"
+                  style="padding: 0.45rem 0.85rem; font-size: 0.82rem; text-decoration: none;"
+                >
+                  <span>📥 Download</span>
+                </a>
+              </div>
+            </div>
+          `).join('')}
+
+          ${teacherExclusiveDoc ? `
+            <div class="media-file-card teacher-exclusive-card">
+              <div class="media-file-top">
+                <div class="media-file-icon" style="background: #ffedd5; color: #c2410c;">🔒</div>
+                <span class="media-file-badge" style="background: #9a3412; color: #ffffff;">${teacherExclusiveDoc.badge}</span>
+              </div>
+              <h3 class="media-file-title" style="color: #7c2d12;">${teacherExclusiveDoc.title}</h3>
+              <p class="media-file-desc" style="color: #9a3412;">
+                Full 75–90 min verbatim instructor script (Blocks 1–5), Say-Show-Do methodology, Color-Dot technique, and MS Paint offline drills. Visible only to signed-in Teachers.
+              </p>
+              <div class="media-file-meta" style="color: #9a3412;">📦 Size: ${teacherExclusiveDoc.size} • Teacher Only</div>
+              <div class="media-file-actions">
+                <button
+                  type="button"
+                  class="btn-primary-sm"
+                  style="background: #9a3412;"
+                  onclick="App.openModule('${mod.id}', 'teacher_notes')"
+                >
+                  <span>🧑‍🏫 View Teacher Guide</span>
+                </button>
+                <a
+                  href="${teacherExclusiveDoc.file}"
+                  download
+                  class="btn-secondary"
+                  style="padding: 0.45rem 0.85rem; font-size: 0.82rem; text-decoration: none; border-color: #fdba74; color: #9a3412;"
+                >
+                  <span>📥 Download .DOCX</span>
+                </a>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    } else if (!isAuth) {
+      mediaHubHtml = `
+        <div class="locked-media-callout">
+          <div style="font-size: 2rem;">🔐</div>
+          <div>
+            <h3>Presentations, PDFs & Video Files Are Protected</h3>
+            <p>
+              Sign in with your Student or Teacher account to view interactive slide presentations, download the 15-page Visual Primer PDF, watch the lesson video, and practice in the labs.
+            </p>
+          </div>
+          <button type="button" class="btn-primary-sm" onclick="App.openStudentLoginModal()">
+            <span>🔑 Sign In Now</span>
+          </button>
         </div>
       `;
     }
@@ -620,16 +853,18 @@ const App = {
           <span>Hands-on Practice Labs (Mouse & Keyboard)</span>
         </h2>
         <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">
-          Interactive motor skills & typing muscle memory simulators
+          ${isAuth ? 'Interactive motor skills & typing muscle memory simulators' : '🔒 Sign in required to launch labs'}
         </span>
       </div>
 
       <div class="practice-labs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; margin-bottom: 2.25rem;">
         <!-- Mouse Practice Lab Card -->
-        <div class="module-card practice-lab-card" style="border: 2px solid #bfdbfe; background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%); cursor: pointer;" onclick="App.openMouseTrainer()">
+        <div class="module-card practice-lab-card ${!isAuth ? 'module-card-locked' : ''}" style="border: 2px solid #bfdbfe; background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%); cursor: pointer;" onclick="App.openMouseTrainer()">
           <div class="module-card-header">
             <div class="module-icon-large" style="background: #dbeafe; color: #1d4ed8;">🖱️</div>
-            <span class="module-badge" style="background: #2563eb; color: #ffffff;">Precision Simulator</span>
+            <span class="module-badge" style="background: ${isAuth ? '#2563eb' : '#475569'}; color: #ffffff;">
+              ${isAuth ? 'Precision Simulator' : '🔒 Sign In Required'}
+            </span>
           </div>
           <h3 class="module-title">Mouse & Trackpad Precision Lab</h3>
           <p class="module-desc">Inspired by <strong>mouse.techlit.tools</strong>. 6 core skills with 24 interactive gamified levels: Coin Chase clicking, Double-Click treasure unlock, Right-Click menus, Apple Picker drag-and-drop, <strong>Text Selection & Highlighting</strong>, and Scavenger Hunt scrolling!</p>
@@ -641,17 +876,19 @@ const App = {
             <span class="chip">⚡ Double-Click Speed</span>
             <span class="chip">📜 Scavenger Hunt Scrolling</span>
           </div>
-          <button class="module-footer-btn" style="background: #2563eb; color: #ffffff; border-color: #1d4ed8;">
-            <span>${isStudentLogged || isTeacher ? 'Launch Mouse Lab' : 'Sign In to Launch Lab'}</span>
+          <button class="module-footer-btn" style="background: ${isAuth ? '#2563eb' : '#475569'}; color: #ffffff;">
+            <span>${isAuth ? 'Launch Mouse Lab' : '🔒 Sign In to Launch Lab'}</span>
             <span>➜</span>
           </button>
         </div>
 
         <!-- Keyboard Typing Lab Card -->
-        <div class="module-card practice-lab-card" style="border: 2px solid #bbf7d0; background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%); cursor: pointer;" onclick="App.openTypingTrainer()">
+        <div class="module-card practice-lab-card ${!isAuth ? 'module-card-locked' : ''}" style="border: 2px solid #bbf7d0; background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%); cursor: pointer;" onclick="App.openTypingTrainer()">
           <div class="module-card-header">
             <div class="module-icon-large" style="background: #dcfce7; color: #15803d;">⌨️</div>
-            <span class="module-badge" style="background: #16a34a; color: #ffffff;">Stamina Simulator</span>
+            <span class="module-badge" style="background: ${isAuth ? '#16a34a' : '#475569'}; color: #ffffff;">
+              ${isAuth ? 'Stamina Simulator' : '🔒 Sign In Required'}
+            </span>
           </div>
           <h3 class="module-title">Keyboard Typing Trainer</h3>
           <p class="module-desc">Inspired by <strong>Stamina, Keybr & TypingClub</strong>. Interactive QWERTY keyboard with tactile bumps, live WPM, accuracy %, sound feedback, and 8 Canadian newcomer lessons.</p>
@@ -662,8 +899,8 @@ const App = {
             <span class="chip">📮 Canadian Postal Codes</span>
             <span class="chip">📈 Live WPM & Audio Clicks</span>
           </div>
-          <button class="module-footer-btn" style="background: #16a34a; color: #ffffff; border-color: #15803d;">
-            <span>${isStudentLogged || isTeacher ? 'Launch Typing Lab' : 'Sign In to Launch Lab'}</span>
+          <button class="module-footer-btn" style="background: ${isAuth ? '#16a34a' : '#475569'}; color: #ffffff;">
+            <span>${isAuth ? 'Launch Typing Lab' : '🔒 Sign In to Launch Lab'}</span>
             <span>➜</span>
           </button>
         </div>
@@ -676,7 +913,7 @@ const App = {
           <span>Curriculum Learning Modules (${MODULES_DATA.length})</span>
         </h2>
         <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">
-          ${isStudentLogged || isTeacher ? 'Select any module to start learning' : 'Sign in above to unlock module tests'}
+          ${isAuth ? 'Select any module to access slides, guides, videos & quizzes' : '🔒 Sign in above to unlock modules & files'}
         </span>
       </div>
 
@@ -687,10 +924,10 @@ const App = {
       const chips = (mod.tags || []).map(t => `<span class="chip">🏷️ ${t}</span>`).join('');
       
       html += `
-        <div class="module-card" onclick="App.openModule('${mod.id}')">
+        <div class="module-card ${!isAuth ? 'module-card-locked' : ''}" onclick="App.openModule('${mod.id}')">
           <div class="module-card-header">
             <div class="module-icon-large">${mod.icon}</div>
-            <span class="module-badge">${mod.badge}</span>
+            <span class="module-badge">${isAuth ? mod.badge : '🔒 Locked'}</span>
           </div>
 
           <h3 class="module-title">${mod.title}</h3>
@@ -698,42 +935,57 @@ const App = {
 
           <div class="module-features-chips">
             ${chips}
+            <span class="chip">🖼️ ${mod.presentation.length} Slides</span>
             <span class="chip">📊 ${mod.quiz.questions.length} Quiz Questions</span>
           </div>
 
-          <button class="module-footer-btn">
-            <span>${isTeacher ? 'Inspect Module & Teacher Notes' : 'Start Learning Module'}</span>
+          <button class="module-footer-btn" style="${!isAuth ? 'background: #475569;' : ''}">
+            <span>${!isAuth ? '🔒 Sign In to Open Module' : (isTeacher ? 'Inspect Module & Teacher Guide' : 'Start Learning Module')}</span>
             <span>➜</span>
           </button>
         </div>
       `;
     });
 
-    html += `</div>`;
+    html += `</div>${mediaHubHtml}`;
     container.innerHTML = html;
   },
 
-  openModule(moduleId) {
-    if (this.currentRole === 'student' && !StorageService.isStudentLoggedIn()) {
+  openModule(moduleId, initialTab = 'presentation', presMode = 'deck') {
+    if (!this.isUserAuthenticated()) {
       this.openStudentLoginModal();
       return;
+    }
+    if (initialTab === 'teacher_notes' && !this.isTeacherAuthenticated()) {
+      initialTab = 'presentation';
     }
     this.cleanupLabs();
     this.activeLab = null;
     const found = MODULES_DATA.find(m => m.id === moduleId);
     if (!found) return;
     this.currentModule = found;
-    this.activeLessonTab = 'presentation';
+    this.activeLessonTab = initialTab;
+    this.presentationViewMode = presMode || 'deck';
     this.currentSlideIndex = 0;
     this.render();
   },
 
   // ==========================================
-  // View 2: Detailed Lesson View (5 Tabs)
+  // View 2: Detailed Lesson View (6 Student Tabs + Teacher-Only Tab)
   // ==========================================
   renderLessonView(container = document.getElementById('app-main-content')) {
+    if (!this.isUserAuthenticated()) {
+      this.renderModulesList(container);
+      return;
+    }
+
     const mod = this.currentModule;
-    const isTeacher = this.currentRole === 'teacher';
+    const isTeacher = this.isTeacherAuthenticated();
+
+    // Never allow non-teacher to stay on teacher_notes tab
+    if (this.activeLessonTab === 'teacher_notes' && !isTeacher) {
+      this.activeLessonTab = 'presentation';
+    }
 
     let html = `
       <div class="lesson-container">
@@ -757,6 +1009,9 @@ const App = {
             <button class="lesson-tab-btn ${this.activeLessonTab === 'audio' ? 'active' : ''}" onclick="App.switchTab('audio')">
               <span>🎧 Audio</span>
             </button>
+            <button class="lesson-tab-btn ${this.activeLessonTab === 'files' ? 'active' : ''}" onclick="App.switchTab('files')">
+              <span>📂 Files & Media</span>
+            </button>
             <button class="lesson-tab-btn ${this.activeLessonTab === 'quiz' ? 'active' : ''}" onclick="App.switchTab('quiz')">
               <span>📝 Quiz & TXT Export</span>
             </button>
@@ -768,13 +1023,13 @@ const App = {
           </div>
         </div>
 
-        <!-- Teacher Alert Banner (Visible when Teacher Mode is active) -->
+        <!-- Teacher Alert Banner (Visible ONLY when Teacher Mode is active) -->
         ${isTeacher ? `
           <div class="teacher-mode-banner">
             <div class="teacher-mode-icon">🧑‍🏫</div>
             <div class="teacher-mode-text">
               <h3>Instructor Mode Active: ${mod.title}</h3>
-              <p>You can review all student material slots as well as pedagogical recommendations and offline exercises.</p>
+              <p>You have full access to all learner materials plus the <strong>Teacher-Exclusive Lesson Plan & Verbatim Script</strong>.</p>
             </div>
           </div>
         ` : ''}
@@ -789,20 +1044,33 @@ const App = {
   },
 
   switchTab(tabKey) {
+    if (tabKey === 'teacher_notes' && !this.isTeacherAuthenticated()) {
+      return;
+    }
     this.activeLessonTab = tabKey;
-    document.querySelectorAll('.lesson-tab-btn').forEach(b => b.classList.remove('active'));
+    this.renderLessonView();
+  },
+
+  switchPresentationMode(mode) {
+    this.presentationViewMode = mode === 'pdf' ? 'pdf' : 'deck';
     this.renderActiveTabContent();
   },
 
   renderActiveTabContent() {
+    if (!this.isUserAuthenticated()) return;
+
     const viewport = document.getElementById('lesson-content-viewport');
     if (!viewport) return;
 
     const mod = this.currentModule;
 
+    if (this.activeLessonTab === 'teacher_notes' && !this.isTeacherAuthenticated()) {
+      this.activeLessonTab = 'presentation';
+    }
+
     switch (this.activeLessonTab) {
       case 'presentation':
-        this.renderPresentationSlot(viewport, mod.presentation);
+        this.renderPresentationSlot(viewport, mod.presentation, mod.presentationMeta);
         break;
       case 'text':
         this.renderTextSlot(viewport, mod.textLesson);
@@ -813,52 +1081,150 @@ const App = {
       case 'audio':
         this.renderAudioSlot(viewport, mod.audioLesson);
         break;
+      case 'files':
+        this.renderFilesSlot(viewport, mod);
+        break;
       case 'quiz':
         QuizEngine.init(mod, viewport);
         break;
       case 'teacher_notes':
-        this.renderTeacherNotesSlot(viewport, mod.teacherNotes);
+        if (this.isTeacherAuthenticated()) {
+          this.renderTeacherNotesSlot(viewport, mod.teacherNotes);
+        }
         break;
     }
   },
 
-  // Slot 1: Presentation Carousel
-  renderPresentationSlot(container, slides = []) {
-    if (!slides.length) {
-      container.innerHTML = '<p>No slides available yet.</p>';
+  // Slot 1: Presentation Carousel + Visual Primer PDF Viewer
+  renderPresentationSlot(container, slides = [], meta = {}) {
+    if (!slides.length && !meta.pdfUrl) {
+      container.innerHTML = '<p>No presentations available yet.</p>';
+      return;
+    }
+
+    const mode = this.presentationViewMode || 'deck';
+
+    const modeBarHtml = `
+      <div class="presentation-toolbar">
+        <div class="presentation-mode-switcher">
+          <button
+            type="button"
+            class="pres-mode-btn ${mode === 'deck' ? 'active' : ''}"
+            onclick="App.switchPresentationMode('deck')"
+          >
+            <span>📊 Interactive Slide Deck</span>
+            <span class="pres-mode-count">${slides.length} Slides</span>
+          </button>
+          ${meta.pdfUrl ? `
+            <button
+              type="button"
+              class="pres-mode-btn ${mode === 'pdf' ? 'active' : ''}"
+              onclick="App.switchPresentationMode('pdf')"
+            >
+              <span>📕 Visual Primer Presentation (PDF)</span>
+              <span class="pres-mode-count">${meta.pdfPages || 15} Pages</span>
+            </button>
+          ` : ''}
+        </div>
+
+        <div class="presentation-download-actions">
+          ${meta.pptxUrl ? `
+            <a href="${meta.pptxUrl}" download class="btn-secondary" style="padding: 0.45rem 0.9rem; font-size: 0.82rem; text-decoration: none;">
+              <span>📥 Download .PPTX</span>
+            </a>
+          ` : ''}
+          ${meta.pdfUrl ? `
+            <a href="${meta.pdfUrl}" download class="btn-secondary" style="padding: 0.45rem 0.9rem; font-size: 0.82rem; text-decoration: none;">
+              <span>📥 Download .PDF</span>
+            </a>
+          ` : ''}
+        </div>
+      </div>
+    `;
+
+    if (mode === 'pdf' && meta.pdfUrl) {
+      container.innerHTML = `
+        <div class="presentation-card">
+          ${modeBarHtml}
+          <div class="pdf-viewer-header">
+            <div>
+              <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800;">📕 ${meta.pdfLabel || 'Illustrated Visual Primer (PDF)'}</h3>
+              <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                Browse all ${meta.pdfPages || 15} visual slides directly below or open in a new tab.
+              </p>
+            </div>
+            <a href="${meta.pdfUrl}" target="_blank" class="btn-primary-sm" style="text-decoration: none;">
+              <span>↗️ Open Full Screen</span>
+            </a>
+          </div>
+          <div class="pdf-embed-container">
+            <iframe src="${meta.pdfUrl}#view=FitH" title="Computer Basics & Mouse Mastery Presentation PDF"></iframe>
+          </div>
+        </div>
+      `;
       return;
     }
 
     const currentSlide = slides[this.currentSlideIndex] || slides[0];
+    const progressPct = Math.round(((this.currentSlideIndex + 1) / slides.length) * 100);
+    const speakPayload = encodeURIComponent(
+      `${currentSlide.title}. ${currentSlide.text} ${(currentSlide.bullets || []).join('. ')}`
+    );
 
-    let dotsHtml = slides.map((s, idx) => `
-      <div 
-        class="slide-dot ${idx === this.currentSlideIndex ? 'active' : ''}" 
+    const bulletsHtml = (currentSlide.bullets && currentSlide.bullets.length > 0)
+      ? `<ul class="slide-bullets-list">
+          ${currentSlide.bullets.map(b => `<li>${b}</li>`).join('')}
+        </ul>`
+      : '';
+
+    const thumbnailsHtml = slides.map((s, idx) => `
+      <button
+        type="button"
+        class="slide-thumb-pill ${idx === this.currentSlideIndex ? 'active' : ''}"
         onclick="App.goToSlide(${idx})"
-        title="Slide ${idx + 1}"
-      ></div>
+        title="Slide ${idx + 1}: ${s.title}"
+      >
+        <span>${idx + 1}</span>
+      </button>
     `).join('');
 
     container.innerHTML = `
       <div class="presentation-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
-            Interactive Slide Carousel
-          </span>
-          <span style="font-size: 0.85rem; font-weight: 700; background: var(--surface-muted); padding: 3px 10px; border-radius: var(--radius-full);">
-            Slide ${this.currentSlideIndex + 1} of ${slides.length}
-          </span>
+        ${modeBarHtml}
+
+        <div class="slide-progress-track">
+          <div class="slide-progress-fill" style="width: ${progressPct}%;"></div>
         </div>
 
-        <div class="slide-viewport">
-          <div class="slide-content-icon">${currentSlide.icon || '💻'}</div>
-          <h2 class="slide-title">${currentSlide.title}</h2>
-          <p class="slide-text">${currentSlide.text}</p>
-          ${currentSlide.tip ? `
-            <div style="margin-top: 1.25rem; font-size: 0.95rem; color: #1e40af; background: #eff6ff; padding: 0.6rem 1.2rem; border-radius: var(--radius-full); font-weight: 600;">
-              ${currentSlide.tip}
+        <div class="slide-stage">
+          <div class="slide-stage-top">
+            <span class="slide-category-pill">${currentSlide.category || 'Lesson Presentation'}</span>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button
+                type="button"
+                class="slide-audio-btn"
+                onclick="App.playAudioPrompt('${speakPayload}')"
+                title="Listen to this slide read aloud"
+              >
+                <span>🔊 Read Slide</span>
+              </button>
+              <span class="slide-counter-badge">
+                Slide ${this.currentSlideIndex + 1} / ${slides.length}
+              </span>
             </div>
-          ` : ''}
+          </div>
+
+          <div class="slide-stage-body">
+            <div class="slide-content-icon">${currentSlide.icon || '💻'}</div>
+            <h2 class="slide-title">${currentSlide.title}</h2>
+            <p class="slide-text">${currentSlide.text}</p>
+            ${bulletsHtml}
+            ${currentSlide.tip ? `
+              <div class="slide-tip-callout">
+                ${currentSlide.tip}
+              </div>
+            ` : ''}
+          </div>
         </div>
 
         <div class="presentation-nav">
@@ -867,8 +1233,8 @@ const App = {
             <span>Previous</span>
           </button>
 
-          <div class="slide-indicators">
-            ${dotsHtml}
+          <div class="slide-thumb-strip">
+            ${thumbnailsHtml}
           </div>
 
           <button class="slide-nav-btn" ${this.currentSlideIndex === slides.length - 1 ? 'disabled' : ''} onclick="App.nextSlide()">
@@ -899,62 +1265,116 @@ const App = {
     this.renderActiveTabContent();
   },
 
-  // Slot 2: Text Reading
+  // Slot 2: Text Reading & Master Visual Cheat Sheet
   renderTextSlot(container, textData) {
     if (!textData) return;
 
-    let sectionsHtml = (textData.sections || []).map(sec => `
-      <div style="margin-bottom: 1.75rem;">
-        <h4 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.4rem;">
-          ${sec.subheading}
-        </h4>
-        <p style="font-size: 1.05rem; color: var(--text-muted); line-height: 1.6;">
-          ${sec.body}
-        </p>
-      </div>
-    `).join('');
+    let sectionsHtml = (textData.sections || []).map(sec => {
+      const formattedBody = (sec.body || '').replace(/\n/g, '<br>');
+      return `
+        <div class="text-guide-card">
+          <div class="text-guide-card-head">
+            <span class="text-guide-icon">${sec.icon || '📘'}</span>
+            <h4>${sec.subheading}</h4>
+          </div>
+          <p>${formattedBody}</p>
+        </div>
+      `;
+    }).join('');
+
+    let cheatSheetHtml = '';
+    if (Array.isArray(textData.cheatSheet) && textData.cheatSheet.length > 0) {
+      cheatSheetHtml = `
+        <div class="cheat-sheet-wrap">
+          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.75rem;">
+            📋 Master Visual Cheat Sheet — Quick Review
+          </h3>
+          <div class="table-card">
+            <table class="metrics-table cheat-sheet-table">
+              <thead>
+                <tr>
+                  <th>Physical Action</th>
+                  <th>Action Name</th>
+                  <th>What It Does on Screen</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${textData.cheatSheet.map(row => `
+                  <tr>
+                    <td><strong>${row.physical}</strong></td>
+                    <td><span class="cheat-name-pill">${row.name}</span></td>
+                    <td>${row.intent}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
 
     const downloadBannerHtml = textData.downloadUrl ? `
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe; padding: 1.15rem 1.35rem; border-radius: var(--radius-md); margin-bottom: 2rem;">
+      <div class="handbook-download-banner">
         <div style="display: flex; align-items: center; gap: 0.85rem;">
           <span style="font-size: 2.2rem;">📕</span>
           <div>
-            <div style="font-size: 1.05rem; font-weight: 800; color: #1e3a8a;">Student Companion Handbook (PDF)</div>
+            <div style="font-size: 1.05rem; font-weight: 800; color: #1e3a8a;">Illustrated Student Handbook & Review Sheet</div>
             <div style="font-size: 0.88rem; color: #1e40af; margin-top: 0.15rem;">
               ${textData.downloadLabel || 'Download complete illustrated companion handbook with diagrams'}
             </div>
           </div>
         </div>
-        <a 
-          href="${textData.downloadUrl}" 
-          download 
-          target="_blank" 
-          class="download-txt-cta" 
-          style="padding: 0.6rem 1.25rem; font-size: 0.9rem; text-decoration: none;"
-        >
-          <span>📥 Download PDF</span>
-          <span>➜</span>
-        </a>
+        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+          <button
+            type="button"
+            class="btn-secondary"
+            style="padding: 0.6rem 1rem; font-size: 0.86rem;"
+            onclick="App.openModule(App.currentModule.id, 'presentation', 'pdf')"
+          >
+            <span>👁️ View 15-Page PDF</span>
+          </button>
+          <a 
+            href="${textData.downloadUrl}" 
+            download 
+            target="_blank" 
+            class="btn-primary-sm" 
+            style="padding: 0.6rem 1.1rem; font-size: 0.86rem; text-decoration: none;"
+          >
+            <span>📥 Download PDF</span>
+          </a>
+          ${textData.reviewDocUrl ? `
+            <a 
+              href="${textData.reviewDocUrl}" 
+              download 
+              class="btn-secondary" 
+              style="padding: 0.6rem 1rem; font-size: 0.86rem; text-decoration: none;"
+            >
+              <span>📝 Review Quiz (.DOCX)</span>
+            </a>
+          ` : ''}
+        </div>
       </div>
     ` : '';
 
     container.innerHTML = `
       <div class="presentation-card" style="padding: 2.25rem;">
         <span style="font-size: 0.8rem; font-weight: 700; color: var(--brand-blue); text-transform: uppercase;">
-          Reading & Visual Guide
+          Reading & Illustrated Visual Guide
         </span>
         <h2 style="font-size: 1.65rem; font-weight: 800; margin: 0.5rem 0 0.75rem;">
           ${textData.heading}
         </h2>
-        <p style="font-size: 1.1rem; color: var(--text-main); background: #f8fafc; padding: 1rem 1.25rem; border-left: 4px solid var(--brand-blue); border-radius: 4px; margin-bottom: 1.75rem;">
+        <p style="font-size: 1.05rem; color: var(--text-main); background: #f8fafc; padding: 1rem 1.25rem; border-left: 4px solid var(--brand-blue); border-radius: 6px; margin-bottom: 1.75rem;">
           ${textData.summary}
         </p>
 
         ${downloadBannerHtml}
 
-        <div class="text-sections-container">
+        <div class="text-guide-grid">
           ${sectionsHtml}
         </div>
+
+        ${cheatSheetHtml}
       </div>
     `;
   },
@@ -1002,21 +1422,42 @@ const App = {
           </div>
         ` : `
           <div class="video-frame-container">
-            <div class="video-placeholder-icon" onclick="alert('Video slot ready: In this slot, the custom MP4 video or interactive player will play.')">
-              ▶
-            </div>
-            <p style="font-size: 1.1rem; font-weight: 700;">Click to Play Step-by-Step Demonstration</p>
-            <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.25rem;">
-              [Video Slot ready for local .mp4 files or embedded demonstrations]
-            </p>
+            <div class="video-placeholder-icon">▶</div>
+            <p style="font-size: 1.1rem; font-weight: 700;">Video demonstration slot</p>
           </div>
         `}
       </div>
     `;
   },
 
-  // Slot 4: Audio Player & Web Speech Pronunciation
+  // Slot 4: Audio Player & Vocabulary Pronunciation
   renderAudioSlot(container, audioData) {
+    if (!audioData) return;
+
+    const vocabHtml = (audioData.vocabulary || []).length > 0 ? `
+      <div style="margin-top: 1.75rem;">
+        <h4 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.75rem;">
+          🗣️ Click Any Word to Hear Clear Canadian Pronunciation
+        </h4>
+        <div class="audio-vocab-grid">
+          ${audioData.vocabulary.map(v => `
+            <button
+              type="button"
+              class="vocab-speak-card"
+              onclick="App.playAudioPrompt('${encodeURIComponent(v.word + '. ' + v.meaning)}')"
+            >
+              <div class="vocab-word-top">
+                <strong>${v.word}</strong>
+                <span>🔊</span>
+              </div>
+              <div class="vocab-phonetic">/${v.phonetic}/</div>
+              <div class="vocab-meaning">${v.meaning}</div>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    ` : '';
+
     container.innerHTML = `
       <div class="media-section-card">
         <h3>${audioData.title}</h3>
@@ -1040,8 +1481,98 @@ const App = {
           </div>
 
           <button class="btn-secondary" onclick="App.playAudioPrompt('${encodeURIComponent(audioData.speechPrompt)}')">
-            <span>Play Speech Voice</span>
+            <span>Play Full Guidance</span>
           </button>
+        </div>
+
+        ${vocabHtml}
+      </div>
+    `;
+  },
+
+  // Slot 5: Files, Presentations & Media Hub (Teacher doc hidden from Students!)
+  renderFilesSlot(container, mod) {
+    const materials = mod.studentMaterials || [];
+    const isTeacher = this.isTeacherAuthenticated();
+    const teacherDoc = (isTeacher && mod.teacherNotes && mod.teacherNotes.teacherExclusiveDoc)
+      ? mod.teacherNotes.teacherExclusiveDoc
+      : null;
+
+    container.innerHTML = `
+      <div class="presentation-card">
+        <div style="margin-bottom: 1.5rem;">
+          <span style="font-size: 0.8rem; font-weight: 700; color: var(--brand-blue); text-transform: uppercase;">
+            Classroom Media & Presentations
+          </span>
+          <h2 style="font-size: 1.55rem; font-weight: 800; margin: 0.35rem 0 0.4rem;">
+            📂 Files, Presentations & Video Materials
+          </h2>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">
+            All lesson presentations, illustrated PDF handbooks, quick review quizzes, and video guides in one place.
+          </p>
+        </div>
+
+        <div class="media-files-grid">
+          ${materials.map(item => `
+            <div class="media-file-card">
+              <div class="media-file-top">
+                <div class="media-file-icon">${item.icon}</div>
+                <span class="media-file-badge">${item.badge}</span>
+              </div>
+              <h3 class="media-file-title">${item.title}</h3>
+              <p class="media-file-desc">${item.description}</p>
+              <div class="media-file-meta">📦 File Size: ${item.size}</div>
+              <div class="media-file-actions">
+                <button
+                  type="button"
+                  class="btn-primary-sm"
+                  onclick="App.openModule('${mod.id}', '${item.previewTab || 'presentation'}', '${item.previewMode || 'deck'}')"
+                >
+                  <span>👁️ Preview</span>
+                </button>
+                <a
+                  href="${item.file}"
+                  download
+                  class="btn-secondary"
+                  style="padding: 0.45rem 0.85rem; font-size: 0.82rem; text-decoration: none;"
+                >
+                  <span>📥 Download</span>
+                </a>
+              </div>
+            </div>
+          `).join('')}
+
+          ${teacherDoc ? `
+            <div class="media-file-card teacher-exclusive-card">
+              <div class="media-file-top">
+                <div class="media-file-icon" style="background: #ffedd5; color: #c2410c;">🔒</div>
+                <span class="media-file-badge" style="background: #9a3412; color: #ffffff;">${teacherDoc.badge}</span>
+              </div>
+              <h3 class="media-file-title" style="color: #7c2d12;">${teacherDoc.title}</h3>
+              <p class="media-file-desc" style="color: #9a3412;">
+                Exclusive instructor manual with complete verbatim script, classroom timings, and offline MS Paint drills.
+              </p>
+              <div class="media-file-meta" style="color: #9a3412;">📦 Size: ${teacherDoc.size} • Visible Only to Teachers</div>
+              <div class="media-file-actions">
+                <button
+                  type="button"
+                  class="btn-primary-sm"
+                  style="background: #9a3412;"
+                  onclick="App.switchTab('teacher_notes')"
+                >
+                  <span>🧑‍🏫 Open Script</span>
+                </button>
+                <a
+                  href="${teacherDoc.file}"
+                  download
+                  class="btn-secondary"
+                  style="padding: 0.45rem 0.85rem; font-size: 0.82rem; text-decoration: none; border-color: #fdba74; color: #9a3412;"
+                >
+                  <span>📥 Download .DOCX</span>
+                </a>
+              </div>
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -1060,53 +1591,117 @@ const App = {
     }
   },
 
-  // Slot 6: Teacher Notes (Methodology)
+  // Slot 7: Teacher-Exclusive Notes & Full Verbatim Script
   renderTeacherNotesSlot(container, teacherData) {
+    if (!this.isTeacherAuthenticated()) {
+      container.innerHTML = `
+        <div class="presentation-card" style="text-align: center; padding: 3rem;">
+          <div style="font-size: 3rem; margin-bottom: 0.75rem;">🔒</div>
+          <h3>Teacher-Exclusive Document</h3>
+          <p style="color: var(--text-muted);">Only signed-in Teachers can view the Lesson Plan and Teaching Script.</p>
+        </div>
+      `;
+      return;
+    }
     if (!teacherData) return;
 
+    const exclusiveDoc = teacherData.teacherExclusiveDoc;
+    const courseInfo = teacherData.courseInfo || {};
     let tipsHtml = (teacherData.methodologyTips || []).map(t => `<li>${t}</li>`).join('');
-    let exercisesHtml = (teacherData.classroomExercises || []).map(e => `<li>${e}</li>`).join('');
 
-    let downloadsHtml = '';
-    if (teacherData.downloads && teacherData.downloads.length > 0) {
-      downloadsHtml = `
-        <div style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.75rem; box-shadow: var(--shadow-sm);">
-          <h4 style="font-size: 1.05rem; font-weight: 800; color: #9a3412; margin-bottom: 0.75rem;">
-            📂 Download Classroom & Teaching Materials
-          </h4>
-          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-            ${teacherData.downloads.map(d => `
-              <a 
-                href="${d.file}" 
-                download 
-                class="btn-secondary" 
-                style="padding: 0.55rem 1rem; font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; background: #fff7ed; border-color: #fdba74; color: #9a3412;"
-              >
-                <span>${d.icon || '📄'}</span>
-                <span>${d.title}</span>
-              </a>
-            `).join('')}
+    let exclusiveDocBanner = exclusiveDoc ? `
+      <div class="teacher-exclusive-banner">
+        <div style="display: flex; align-items: center; gap: 0.9rem;">
+          <div style="font-size: 2.3rem;">📝</div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <strong style="font-size: 1.08rem; color: #7c2d12;">${exclusiveDoc.title}</strong>
+              <span style="background: #9a3412; color: #fff; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 999px;">
+                ${exclusiveDoc.badge}
+              </span>
+            </div>
+            <div style="font-size: 0.86rem; color: #9a3412; margin-top: 0.2rem;">
+              Original instructor document (${exclusiveDoc.size}) — hidden from student accounts.
+            </div>
           </div>
         </div>
-      `;
-    }
+        <a 
+          href="${exclusiveDoc.file}" 
+          download 
+          class="btn-primary-sm" 
+          style="background: #9a3412; text-decoration: none; padding: 0.65rem 1.2rem;"
+        >
+          <span>📥 Download Teaching Script (.DOCX)</span>
+        </a>
+      </div>
+    ` : '';
 
-    let quotesHtml = '';
-    if (teacherData.verbatimScriptHighlights && teacherData.verbatimScriptHighlights.length > 0) {
-      quotesHtml = `
-        <div style="margin-bottom: 1.75rem;">
-          <h3 style="font-size: 1.2rem; font-weight: 800; color: #9a3412; margin-bottom: 0.75rem;">💬 Verbatim Teaching Script Highlights</h3>
-          <div style="display: grid; gap: 0.75rem;">
-            ${teacherData.verbatimScriptHighlights.map(q => `
-              <div style="background: #fffaf0; border-left: 3px solid #f97316; padding: 0.85rem 1rem; border-radius: 4px;">
-                <strong style="color: #c2410c; font-size: 0.88rem; display: block; margin-bottom: 0.25rem;">${q.block}</strong>
-                <p style="font-size: 0.95rem; font-style: italic; color: #431407; margin: 0;">${q.quote}</p>
+    let courseMetaHtml = courseInfo.audience ? `
+      <div class="course-meta-grid">
+        <div class="course-meta-item"><strong>👥 Audience</strong><span>${courseInfo.audience}</span></div>
+        <div class="course-meta-item"><strong>⏱️ Duration</strong><span>${courseInfo.duration}</span></div>
+        <div class="course-meta-item"><strong>🗣️ Language Level</strong><span>${courseInfo.languageLevel}</span></div>
+        <div class="course-meta-item"><strong>🧰 Equipment</strong><span>${courseInfo.equipment}</span></div>
+      </div>
+    ` : '';
+
+    let scriptBlocksHtml = (teacherData.scriptBlocks || []).length > 0 ? `
+      <div style="margin-bottom: 1.75rem;">
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: #9a3412; margin-bottom: 0.85rem;">
+          🎙️ Block-by-Block Verbatim Teaching Script
+        </h3>
+        <div class="script-blocks-stack">
+          ${teacherData.scriptBlocks.map(b => `
+            <div class="script-block-card">
+              <div class="script-block-head">
+                <strong>${b.title}</strong>
+                <span class="script-duration-pill">⏱️ ${b.duration}</span>
               </div>
-            `).join('')}
-          </div>
+              <div class="script-objective"><strong>Objective:</strong> ${b.objective}</div>
+              <div class="script-quote-box">${b.script}</div>
+              ${(b.teacherActions && b.teacherActions.length > 0) ? `
+                <div class="script-actions-box">
+                  <strong>Teacher Actions & Red Flags:</strong>
+                  <ul>
+                    ${b.teacherActions.map(a => `<li>${a}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
         </div>
-      `;
-    }
+      </div>
+    ` : '';
+
+    let tracksHtml = (teacherData.practiceTracks && teacherData.practiceTracks.length > 0) ? `
+      <div style="margin-top: 1.75rem;">
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: #9a3412; margin-bottom: 0.75rem;">
+          🎮 Online & Offline Practice Tracks (Block 4)
+        </h3>
+        <div class="table-card">
+          <table class="metrics-table">
+            <thead>
+              <tr>
+                <th>Track</th>
+                <th>Software / Tool</th>
+                <th>Primary Skill</th>
+                <th>Instructional Focus</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${teacherData.practiceTracks.map(tr => `
+                <tr>
+                  <td><strong>${tr.track}</strong></td>
+                  <td>${tr.tool}</td>
+                  <td>${tr.skill}</td>
+                  <td>${tr.focus}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ` : '';
 
     container.innerHTML = `
       <div class="presentation-card">
@@ -1118,12 +1713,13 @@ const App = {
           </div>
         </div>
 
-        <div style="background: #fff7ed; border-left: 4px solid #ea580c; padding: 1.25rem; border-radius: 4px; margin-bottom: 1.75rem;">
+        ${exclusiveDocBanner}
+        ${courseMetaHtml}
+
+        <div style="background: #fff7ed; border-left: 4px solid #ea580c; padding: 1.25rem; border-radius: 6px; margin-bottom: 1.75rem;">
           <h4 style="font-size: 1.05rem; font-weight: 800; color: #9a3412; margin-bottom: 0.35rem;">🎯 Core Learning Objective</h4>
           <p style="color: #7c2d12; font-size: 0.98rem; line-height: 1.5;">${teacherData.learningGoal}</p>
         </div>
-
-        ${downloadsHtml}
 
         <div style="margin-bottom: 1.75rem;">
           <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.75rem;">💡 Key Pedagogical Rules & Techniques</h3>
@@ -1132,14 +1728,8 @@ const App = {
           </ul>
         </div>
 
-        ${quotesHtml}
-
-        <div>
-          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.75rem;">📋 Block-by-Block Class Schedule & Drills</h3>
-          <ul class="teacher-tips-list" style="line-height: 1.6;">
-            ${exercisesHtml}
-          </ul>
-        </div>
+        ${scriptBlocksHtml}
+        ${tracksHtml}
       </div>
     `;
   },
@@ -1557,14 +2147,24 @@ const App = {
             </td>
             <td>${dateStr}</td>
             <td>
-              <button 
-                class="btn-danger" 
-                style="padding: 0.35rem 0.75rem; font-size: 0.82rem;"
-                onclick="App.deleteTeacher('${t.id}', '${encodeURIComponent(t.name)}')"
-                title="Delete this teacher account"
-              >
-                🗑️ Delete
-              </button>
+              <div style="display: flex; gap: 0.45rem; flex-wrap: wrap;">
+                <button 
+                  class="btn-secondary" 
+                  style="padding: 0.35rem 0.7rem; font-size: 0.82rem; font-weight: 700;"
+                  onclick="App.openEditTeacherModal('${t.id}')"
+                  title="Edit teacher or reset password"
+                >
+                  🔑 Edit / Reset
+                </button>
+                <button 
+                  class="btn-danger" 
+                  style="padding: 0.35rem 0.75rem; font-size: 0.82rem;"
+                  onclick="App.deleteTeacher('${t.id}', '${encodeURIComponent(t.name)}')"
+                  title="Delete this teacher account"
+                >
+                  🗑️ Delete
+                </button>
+              </div>
             </td>
           </tr>
         `;
@@ -1675,6 +2275,14 @@ const App = {
                   title="Download complete lifetime metrics report for ${s.nickname} (.txt)"
                 >
                   📥 All-Time .TXT
+                </button>
+                <button 
+                  class="btn-secondary" 
+                  style="padding: 0.35rem 0.65rem; font-size: 0.8rem; font-weight: 700;"
+                  onclick="App.openEditStudentModal('${encodeURIComponent(s.nickname)}')"
+                  title="Reset password or update student avatar"
+                >
+                  🔑 Reset Pass
                 </button>
                 <button 
                   class="btn-danger" 
@@ -1798,6 +2406,42 @@ const App = {
     }
   },
 
+  openEditTeacherModal(id) {
+    const list = StorageService.getTeacherAccounts();
+    const teacher = list.find(t => t.id === id);
+    if (!teacher) return;
+    const modal = document.getElementById('admin-edit-teacher-modal');
+    if (!modal) return;
+
+    document.getElementById('edit-teacher-id').value = teacher.id;
+    document.getElementById('edit-teacher-name').value = teacher.name || '';
+    document.getElementById('edit-teacher-username').value = teacher.username || '';
+    document.getElementById('edit-teacher-password').value = teacher.password || '';
+    document.getElementById('edit-teacher-spec').value = teacher.specialization || '';
+    modal.classList.add('open');
+  },
+
+  closeEditTeacherModal() {
+    const modal = document.getElementById('admin-edit-teacher-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  submitAdminEditTeacher() {
+    const id = document.getElementById('edit-teacher-id').value;
+    const res = StorageService.updateTeacherAccount(id, {
+      name: document.getElementById('edit-teacher-name').value,
+      username: document.getElementById('edit-teacher-username').value,
+      password: document.getElementById('edit-teacher-password').value,
+      specialization: document.getElementById('edit-teacher-spec').value
+    });
+    if (!res.success) {
+      alert(res.error);
+      return;
+    }
+    this.closeEditTeacherModal();
+    this.renderAdminDashboard();
+  },
+
   // ==========================================
   // Admin Student Account CRUD Handlers
   // ==========================================
@@ -1855,28 +2499,84 @@ const App = {
     const pass = (document.getElementById('new-student-pass').value || '').trim();
     const avatar = this.adminStudentAvatarId || 'avatar_hijab_teal';
 
-    if (!nick) {
-      alert('Please enter a student nickname.');
-      return;
-    }
-
-    const students = StorageService.getRegisteredStudents();
-    const exists = students.some(s => s.nickname.toLowerCase() === nick.toLowerCase());
-    if (exists) {
-      alert(`Student account "${nick}" already exists.`);
-      return;
-    }
-
-    const newStudent = {
+    const res = StorageService.createStudentAccount({
       nickname: nick,
       password: pass || '123',
-      avatarId: avatar,
-      isLoggedIn: false,
-      createdAt: new Date().toISOString()
-    };
+      avatarId: avatar
+    });
+    if (!res.success) {
+      alert(res.error);
+      return;
+    }
 
-    StorageService.saveRegisteredStudent(newStudent);
     this.closeCreateStudentModal();
+    this.renderAdminDashboard();
+  },
+
+  openEditStudentModal(encodedNick) {
+    const nick = decodeURIComponent(encodedNick);
+    const list = StorageService.getRegisteredStudents();
+    const student = list.find(s => (s.nickname || '').toLowerCase() === nick.toLowerCase());
+    if (!student) return;
+
+    const modal = document.getElementById('admin-edit-student-modal');
+    if (!modal) return;
+
+    document.getElementById('edit-student-original-nick').value = student.nickname;
+    document.getElementById('edit-student-nick').value = student.nickname;
+    document.getElementById('edit-student-pass').value = student.password || '123';
+    this.adminEditStudentAvatarId = student.avatarId || 'avatar_hijab_teal';
+
+    this.renderAdminEditStudentAvatarPicker();
+    modal.classList.add('open');
+  },
+
+  closeEditStudentModal() {
+    const modal = document.getElementById('admin-edit-student-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  renderAdminEditStudentAvatarPicker() {
+    const grid = document.getElementById('admin-edit-student-avatar-grid');
+    if (!grid) return;
+    const avatars = typeof AvatarsService !== 'undefined' ? AvatarsService.getAll() : [];
+    grid.innerHTML = avatars.map(av => {
+      const isSelected = av.id === this.adminEditStudentAvatarId;
+      return `
+        <div 
+          class="avatar-card-radio ${isSelected ? 'selected' : ''}" 
+          id="admin-edit-avatar-card-${av.id}"
+          onclick="App.selectAdminEditStudentAvatar('${av.id}')"
+          title="${av.name}"
+        >
+          ${AvatarsService.getSvgHtml(av.id, 50)}
+          <span class="avatar-title-label">${av.name}</span>
+        </div>
+      `;
+    }).join('');
+  },
+
+  selectAdminEditStudentAvatar(avatarId) {
+    this.adminEditStudentAvatarId = avatarId;
+    document.querySelectorAll('#admin-edit-student-avatar-grid .avatar-card-radio').forEach(card => {
+      card.classList.remove('selected');
+    });
+    const chosen = document.getElementById(`admin-edit-avatar-card-${avatarId}`);
+    if (chosen) chosen.classList.add('selected');
+  },
+
+  submitAdminEditStudent() {
+    const origNick = document.getElementById('edit-student-original-nick').value;
+    const pass = document.getElementById('edit-student-pass').value;
+    const res = StorageService.updateStudentAccount(origNick, {
+      password: pass,
+      avatarId: this.adminEditStudentAvatarId
+    });
+    if (!res.success) {
+      alert(res.error);
+      return;
+    }
+    this.closeEditStudentModal();
     this.renderAdminDashboard();
   },
 
