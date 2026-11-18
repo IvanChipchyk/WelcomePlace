@@ -204,7 +204,7 @@ const App = {
 
     if (!registered || registered.length === 0) {
       section.style.display = 'block';
-      container.innerHTML = '<span style="font-size: 0.82rem; color: var(--text-light);">No student profiles registered yet. Ask the Administrator to create your account.</span>';
+      container.innerHTML = '<span class="text-xs text-light">No student profiles registered yet. Ask the Administrator to create your account.</span>';
       return;
     }
 
@@ -631,21 +631,20 @@ const App = {
               Full access to all learning modules, classroom presentations, student media, and your <strong>Teacher-Exclusive Lesson Plan & Verbatim Teaching Script</strong>.
             </p>
             <div class="student-identity-bar">
-              <div style="display: flex; align-items: center; gap: 0.85rem;">
+              <div class="hero-identity">
                 <div class="hero-teacher-avatar">🧑‍🏫</div>
                 <div>
-                  <div style="font-size: 1.08rem; font-weight: 800; color: white;">
+                  <div class="hero-identity-name">
                     ${activeTeacher.name} (@${activeTeacher.username})
                   </div>
-                  <div style="font-size: 0.82rem; color: #fed7aa;">
+                  <div class="hero-identity-sub">
                     ${activeTeacher.specialization || 'Digital Literacy Instructor'} • Teacher Guide Unlocked
                   </div>
                 </div>
               </div>
               <button 
                 type="button" 
-                class="btn-secondary" 
-                style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full); font-size: 0.86rem;"
+                class="btn-secondary btn-pill" 
                 onclick="App.openModule('mod_mouse', 'teacher_notes')"
               >
                 <span>📖 Open Teacher Script & Plan</span>
@@ -664,32 +663,30 @@ const App = {
               Explore interactive presentations, step-by-step videos, illustrated PDF guides, hands-on practice labs, and quizzes at your own pace.
             </p>
             
-            <div class="student-identity-bar" style="justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 0.85rem;">
+            <div class="student-identity-bar">
+              <div class="hero-identity">
                 ${AvatarsService.getSvgHtml(student.avatarId || 'avatar_hijab_teal', 52)}
                 <div>
-                  <div style="font-size: 1.1rem; font-weight: 800; color: white;">
+                  <div class="hero-identity-name">
                     ${student.nickname || 'Student'}
                   </div>
-                  <div style="font-size: 0.82rem; color: #bae6fd;">
+                  <div class="hero-identity-sub">
                     Signed-In Student Profile • All Materials Unlocked
                   </div>
                 </div>
               </div>
 
-              <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+              <div class="row row-wrap gap-sm">
                 <button 
                   type="button" 
-                  class="btn-secondary" 
-                  style="padding: 0.55rem 1rem; border-radius: var(--radius-full); font-size: 0.86rem;"
+                  class="btn-secondary btn-pill" 
                   onclick="App.openModule('mod_mouse', 'presentation', 'deck')"
                 >
                   <span>📊 Open Presentation</span>
                 </button>
                 <button 
                   type="button" 
-                  class="btn-danger" 
-                  style="padding: 0.55rem 1rem; border-radius: var(--radius-full); font-size: 0.86rem; background: #fee2e2; border-color: #fca5a5;"
+                  class="btn-danger btn-pill" 
                   onclick="App.logoutStudent()"
                 >
                   <span>🚪 Log Out</span>
@@ -710,11 +707,10 @@ const App = {
               Presentations, classroom files, video lessons, and interactive practice labs are available <strong>only to signed-in users</strong>. Student and teacher accounts are created exclusively by the Administrator.
             </p>
             
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem;">
+            <div class="hero-actions">
               <button 
                 type="button" 
-                class="download-txt-cta" 
-                style="width: auto; padding: 0.85rem 1.5rem; background: #38bdf8; color: #0f172a; font-weight: 800;"
+                class="btn-hero-primary" 
                 onclick="App.openStudentLoginModal()"
               >
                 <span>🔑 Student Sign In</span>
@@ -722,16 +718,14 @@ const App = {
               </button>
               <button 
                 type="button" 
-                class="btn-secondary" 
-                style="padding: 0.85rem 1.35rem; background: rgba(255,255,255,0.14); color: #ffffff; border-color: rgba(255,255,255,0.35);"
+                class="btn-hero-ghost" 
                 onclick="App.requestRoleChange('teacher')"
               >
                 <span>🧑‍🏫 Teacher Sign In</span>
               </button>
               <button 
                 type="button" 
-                class="btn-secondary" 
-                style="padding: 0.85rem 1.35rem; background: rgba(255,255,255,0.08); color: #e2e8f0; border-color: rgba(255,255,255,0.22);"
+                class="btn-hero-ghost" 
                 onclick="App.requestRoleChange('admin')"
               >
                 <span>🛡️ Admin Portal</span>
@@ -752,12 +746,12 @@ const App = {
         : null;
 
       mediaHubHtml = `
-        <div class="section-title-wrap" style="margin-top: 2.25rem;">
+        <div class="section-title-wrap">
           <h2 class="section-title">
             <span>📂</span>
             <span>Presentations & Classroom Media Library</span>
           </h2>
-          <span style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600;">
+          <span class="section-meta">
             ${isTeacher ? 'Student materials + Teacher-Exclusive Lesson Script' : 'Unlocked for signed-in users'}
           </span>
         </div>
@@ -784,7 +778,6 @@ const App = {
                   href="${item.file}"
                   download
                   class="btn-secondary"
-                  style="padding: 0.45rem 0.85rem; font-size: 0.82rem; text-decoration: none;"
                 >
                   <span>📥 Download</span>
                 </a>
@@ -795,19 +788,18 @@ const App = {
           ${teacherExclusiveDoc ? `
             <div class="media-file-card teacher-exclusive-card">
               <div class="media-file-top">
-                <div class="media-file-icon" style="background: #ffedd5; color: #c2410c;">🔒</div>
-                <span class="media-file-badge" style="background: #9a3412; color: #ffffff;">${teacherExclusiveDoc.badge}</span>
+                <div class="media-file-icon">🔒</div>
+                <span class="media-file-badge">${teacherExclusiveDoc.badge}</span>
               </div>
-              <h3 class="media-file-title" style="color: #7c2d12;">${teacherExclusiveDoc.title}</h3>
-              <p class="media-file-desc" style="color: #9a3412;">
+              <h3 class="media-file-title">${teacherExclusiveDoc.title}</h3>
+              <p class="media-file-desc">
                 Full 75–90 min verbatim instructor script (Blocks 1–5), Say-Show-Do methodology, Color-Dot technique, and MS Paint offline drills. Visible only to signed-in Teachers.
               </p>
-              <div class="media-file-meta" style="color: #9a3412;">📦 Size: ${teacherExclusiveDoc.size} • Teacher Only</div>
+              <div class="media-file-meta">📦 Size: ${teacherExclusiveDoc.size} • Teacher Only</div>
               <div class="media-file-actions">
                 <button
                   type="button"
                   class="btn-primary-sm"
-                  style="background: #9a3412;"
                   onclick="App.openModule('${mod.id}', 'teacher_notes')"
                 >
                   <span>🧑‍🏫 View Teacher Guide</span>
@@ -816,7 +808,6 @@ const App = {
                   href="${teacherExclusiveDoc.file}"
                   download
                   class="btn-secondary"
-                  style="padding: 0.45rem 0.85rem; font-size: 0.82rem; text-decoration: none; border-color: #fdba74; color: #9a3412;"
                 >
                   <span>📥 Download .DOCX</span>
                 </a>
@@ -828,7 +819,7 @@ const App = {
     } else if (!isAuth) {
       mediaHubHtml = `
         <div class="locked-media-callout">
-          <div style="font-size: 2rem;">🔐</div>
+          <div class="module-icon-large">🔐</div>
           <div>
             <h3>Presentations, PDFs & Video Files Are Protected</h3>
             <p>
@@ -847,22 +838,22 @@ const App = {
       ${heroHtml}
 
       <!-- Interactive Practice Labs Section (Mouse & Keyboard Simulators) -->
-      <div class="section-title-wrap" style="margin-top: 1.5rem;">
+      <div class="section-title-wrap">
         <h2 class="section-title">
           <span>⚡</span>
           <span>Hands-on Practice Labs (Mouse & Keyboard)</span>
         </h2>
-        <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">
+        <span class="section-meta">
           ${isAuth ? 'Interactive motor skills & typing muscle memory simulators' : '🔒 Sign in required to launch labs'}
         </span>
       </div>
 
-      <div class="practice-labs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; margin-bottom: 2.25rem;">
+      <div class="practice-labs-grid">
         <!-- Mouse Practice Lab Card -->
-        <div class="module-card practice-lab-card ${!isAuth ? 'module-card-locked' : ''}" style="border: 2px solid #bfdbfe; background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%); cursor: pointer;" onclick="App.openMouseTrainer()">
+        <div class="module-card practice-lab-card lab-mouse ${!isAuth ? 'module-card-locked' : ''}" onclick="App.openMouseTrainer()">
           <div class="module-card-header">
-            <div class="module-icon-large" style="background: #dbeafe; color: #1d4ed8;">🖱️</div>
-            <span class="module-badge" style="background: ${isAuth ? '#2563eb' : '#475569'}; color: #ffffff;">
+            <div class="module-icon-large">🖱️</div>
+            <span class="module-badge">
               ${isAuth ? 'Precision Simulator' : '🔒 Sign In Required'}
             </span>
           </div>
@@ -876,17 +867,17 @@ const App = {
             <span class="chip">⚡ Double-Click Speed</span>
             <span class="chip">📜 Scavenger Hunt Scrolling</span>
           </div>
-          <button class="module-footer-btn" style="background: ${isAuth ? '#2563eb' : '#475569'}; color: #ffffff;">
+          <button class="module-footer-btn">
             <span>${isAuth ? 'Launch Mouse Lab' : '🔒 Sign In to Launch Lab'}</span>
             <span>➜</span>
           </button>
         </div>
 
         <!-- Keyboard Typing Lab Card -->
-        <div class="module-card practice-lab-card ${!isAuth ? 'module-card-locked' : ''}" style="border: 2px solid #bbf7d0; background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%); cursor: pointer;" onclick="App.openTypingTrainer()">
+        <div class="module-card practice-lab-card lab-typing ${!isAuth ? 'module-card-locked' : ''}" onclick="App.openTypingTrainer()">
           <div class="module-card-header">
-            <div class="module-icon-large" style="background: #dcfce7; color: #15803d;">⌨️</div>
-            <span class="module-badge" style="background: ${isAuth ? '#16a34a' : '#475569'}; color: #ffffff;">
+            <div class="module-icon-large">⌨️</div>
+            <span class="module-badge">
               ${isAuth ? 'Stamina Simulator' : '🔒 Sign In Required'}
             </span>
           </div>
@@ -899,7 +890,7 @@ const App = {
             <span class="chip">📮 Canadian Postal Codes</span>
             <span class="chip">📈 Live WPM & Audio Clicks</span>
           </div>
-          <button class="module-footer-btn" style="background: ${isAuth ? '#16a34a' : '#475569'}; color: #ffffff;">
+          <button class="module-footer-btn">
             <span>${isAuth ? 'Launch Typing Lab' : '🔒 Sign In to Launch Lab'}</span>
             <span>➜</span>
           </button>
@@ -912,7 +903,7 @@ const App = {
           <span>📚</span>
           <span>Curriculum Learning Modules (${MODULES_DATA.length})</span>
         </h2>
-        <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">
+        <span class="section-meta">
           ${isAuth ? 'Select any module to access slides, guides, videos & quizzes' : '🔒 Sign in above to unlock modules & files'}
         </span>
       </div>
@@ -939,7 +930,7 @@ const App = {
             <span class="chip">📊 ${mod.quiz.questions.length} Quiz Questions</span>
           </div>
 
-          <button class="module-footer-btn" style="${!isAuth ? 'background: #475569;' : ''}">
+          <button class="module-footer-btn">
             <span>${!isAuth ? '🔒 Sign In to Open Module' : (isTeacher ? 'Inspect Module & Teacher Guide' : 'Start Learning Module')}</span>
             <span>➜</span>
           </button>
@@ -1016,7 +1007,7 @@ const App = {
               <span>📝 Quiz & TXT Export</span>
             </button>
             ${isTeacher ? `
-              <button class="lesson-tab-btn ${this.activeLessonTab === 'teacher_notes' ? 'active' : ''}" onclick="App.switchTab('teacher_notes')" style="color: #9a3412;">
+              <button class="lesson-tab-btn ${this.activeLessonTab === 'teacher_notes' ? 'active' : ''}" onclick="App.switchTab('teacher_notes')">
                 <span>🧑‍🏫 Teacher Guide</span>
               </button>
             ` : ''}
@@ -1098,7 +1089,7 @@ const App = {
   // Slot 1: Presentation Carousel + Visual Primer PDF Viewer
   renderPresentationSlot(container, slides = [], meta = {}) {
     if (!slides.length && !meta.pdfUrl) {
-      container.innerHTML = '<p>No presentations available yet.</p>';
+      container.innerHTML = '<div class="empty-state">No presentations available yet.</div>';
       return;
     }
 
@@ -1129,12 +1120,12 @@ const App = {
 
         <div class="presentation-download-actions">
           ${meta.pptxUrl ? `
-            <a href="${meta.pptxUrl}" download class="btn-secondary" style="padding: 0.45rem 0.9rem; font-size: 0.82rem; text-decoration: none;">
+            <a href="${meta.pptxUrl}" download class="btn-secondary btn-sm">
               <span>📥 Download .PPTX</span>
             </a>
           ` : ''}
           ${meta.pdfUrl ? `
-            <a href="${meta.pdfUrl}" download class="btn-secondary" style="padding: 0.45rem 0.9rem; font-size: 0.82rem; text-decoration: none;">
+            <a href="${meta.pdfUrl}" download class="btn-secondary btn-sm">
               <span>📥 Download .PDF</span>
             </a>
           ` : ''}
@@ -1148,12 +1139,12 @@ const App = {
           ${modeBarHtml}
           <div class="pdf-viewer-header">
             <div>
-              <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800;">📕 ${meta.pdfLabel || 'Illustrated Visual Primer (PDF)'}</h3>
-              <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
+              <h3>📕 ${meta.pdfLabel || 'Illustrated Visual Primer (PDF)'}</h3>
+              <p>
                 Browse all ${meta.pdfPages || 15} visual slides directly below or open in a new tab.
               </p>
             </div>
-            <a href="${meta.pdfUrl}" target="_blank" class="btn-primary-sm" style="text-decoration: none;">
+            <a href="${meta.pdfUrl}" target="_blank" class="btn-primary-sm">
               <span>↗️ Open Full Screen</span>
             </a>
           </div>
@@ -1199,7 +1190,7 @@ const App = {
         <div class="slide-stage">
           <div class="slide-stage-top">
             <span class="slide-category-pill">${currentSlide.category || 'Lesson Presentation'}</span>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="row gap-sm">
               <button
                 type="button"
                 class="slide-audio-btn"
@@ -1286,28 +1277,28 @@ const App = {
     if (Array.isArray(textData.cheatSheet) && textData.cheatSheet.length > 0) {
       cheatSheetHtml = `
         <div class="cheat-sheet-wrap">
-          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.75rem;">
-            📋 Master Visual Cheat Sheet — Quick Review
-          </h3>
+          <h3>📋 Master Visual Cheat Sheet — Quick Review</h3>
           <div class="table-card">
-            <table class="metrics-table cheat-sheet-table">
-              <thead>
-                <tr>
-                  <th>Physical Action</th>
-                  <th>Action Name</th>
-                  <th>What It Does on Screen</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${textData.cheatSheet.map(row => `
+            <div class="table-scroll">
+              <table class="metrics-table cheat-sheet-table">
+                <thead>
                   <tr>
-                    <td><strong>${row.physical}</strong></td>
-                    <td><span class="cheat-name-pill">${row.name}</span></td>
-                    <td>${row.intent}</td>
+                    <th>Physical Action</th>
+                    <th>Action Name</th>
+                    <th>What It Does on Screen</th>
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  ${textData.cheatSheet.map(row => `
+                    <tr>
+                      <td><strong>${row.physical}</strong></td>
+                      <td><span class="cheat-name-pill">${row.name}</span></td>
+                      <td>${row.intent}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
@@ -1315,20 +1306,19 @@ const App = {
 
     const downloadBannerHtml = textData.downloadUrl ? `
       <div class="handbook-download-banner">
-        <div style="display: flex; align-items: center; gap: 0.85rem;">
-          <span style="font-size: 2.2rem;">📕</span>
+        <div class="row">
+          <div class="media-file-icon">📕</div>
           <div>
-            <div style="font-size: 1.05rem; font-weight: 800; color: #1e3a8a;">Illustrated Student Handbook & Review Sheet</div>
-            <div style="font-size: 0.88rem; color: #1e40af; margin-top: 0.15rem;">
+            <div class="text-strong">Illustrated Student Handbook & Review Sheet</div>
+            <div class="text-sm text-muted">
               ${textData.downloadLabel || 'Download complete illustrated companion handbook with diagrams'}
             </div>
           </div>
         </div>
-        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+        <div class="row row-wrap gap-sm">
           <button
             type="button"
-            class="btn-secondary"
-            style="padding: 0.6rem 1rem; font-size: 0.86rem;"
+            class="btn-secondary btn-sm"
             onclick="App.openModule(App.currentModule.id, 'presentation', 'pdf')"
           >
             <span>👁️ View 15-Page PDF</span>
@@ -1337,8 +1327,7 @@ const App = {
             href="${textData.downloadUrl}" 
             download 
             target="_blank" 
-            class="btn-primary-sm" 
-            style="padding: 0.6rem 1.1rem; font-size: 0.86rem; text-decoration: none;"
+            class="btn-primary-sm"
           >
             <span>📥 Download PDF</span>
           </a>
@@ -1346,8 +1335,7 @@ const App = {
             <a 
               href="${textData.reviewDocUrl}" 
               download 
-              class="btn-secondary" 
-              style="padding: 0.6rem 1rem; font-size: 0.86rem; text-decoration: none;"
+              class="btn-secondary btn-sm"
             >
               <span>📝 Review Quiz (.DOCX)</span>
             </a>
@@ -1357,16 +1345,10 @@ const App = {
     ` : '';
 
     container.innerHTML = `
-      <div class="presentation-card" style="padding: 2.25rem;">
-        <span style="font-size: 0.8rem; font-weight: 700; color: var(--brand-blue); text-transform: uppercase;">
-          Reading & Illustrated Visual Guide
-        </span>
-        <h2 style="font-size: 1.65rem; font-weight: 800; margin: 0.5rem 0 0.75rem;">
-          ${textData.heading}
-        </h2>
-        <p style="font-size: 1.05rem; color: var(--text-main); background: #f8fafc; padding: 1rem 1.25rem; border-left: 4px solid var(--brand-blue); border-radius: 6px; margin-bottom: 1.75rem;">
-          ${textData.summary}
-        </p>
+      <div class="presentation-card">
+        <span class="eyebrow">Reading & Illustrated Visual Guide</span>
+        <h2 class="card-title mt-4 mb-4">${textData.heading}</h2>
+        <p class="lead-callout">${textData.summary}</p>
 
         ${downloadBannerHtml}
 
@@ -1386,44 +1368,35 @@ const App = {
 
     container.innerHTML = `
       <div class="media-section-card">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; margin-bottom: 1.25rem;">
+        <div class="card-head">
           <div>
-            <h3 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 0.35rem;">${videoData.title}</h3>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">${videoData.description || ''}</p>
+            <h3 class="card-title">${videoData.title}</h3>
+            <p class="card-subtitle">${videoData.description || ''}</p>
           </div>
-          <span style="font-size: 0.85rem; font-weight: 700; background: var(--surface-muted); padding: 4px 12px; border-radius: var(--radius-full);">
+          <span class="meta-pill">
             ⏱️ Duration: ${videoData.duration || 'N/A'}
           </span>
         </div>
 
         ${hasVideo ? `
-          <div class="video-player-wrapper" style="position: relative; border-radius: var(--radius-lg); overflow: hidden; background: #000; box-shadow: var(--shadow-md); margin-bottom: 1rem;">
-            <video 
-              controls 
-              preload="metadata" 
-              style="width: 100%; display: block; max-height: 520px; aspect-ratio: 16/9; background: #000;"
-            >
+          <div class="video-player-wrapper">
+            <video controls preload="metadata">
               <source src="${videoData.videoUrl}" type="video/mp4">
               Your browser does not support the video tag.
             </video>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: var(--surface-muted); padding: 0.85rem 1.25rem; border-radius: var(--radius-md);">
-            <div style="font-size: 0.88rem; color: var(--text-muted);">
+          <div class="panel-muted row-between">
+            <div class="text-sm text-muted">
               ✅ High Quality Video Walkthrough • Step-by-Step Pace for Beginners
             </div>
-            <a 
-              href="${videoData.videoUrl}" 
-              download 
-              class="btn-secondary" 
-              style="padding: 0.45rem 0.9rem; font-size: 0.85rem; text-decoration: none;"
-            >
+            <a href="${videoData.videoUrl}" download class="btn-secondary btn-sm">
               <span>📥 Download MP4 Video</span>
             </a>
           </div>
         ` : `
           <div class="video-frame-container">
             <div class="video-placeholder-icon">▶</div>
-            <p style="font-size: 1.1rem; font-weight: 700;">Video demonstration slot</p>
+            <p class="text-strong">Video demonstration slot</p>
           </div>
         `}
       </div>
@@ -1435,8 +1408,8 @@ const App = {
     if (!audioData) return;
 
     const vocabHtml = (audioData.vocabulary || []).length > 0 ? `
-      <div style="margin-top: 1.75rem;">
-        <h4 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.75rem;">
+      <div class="mt-6">
+        <h4 class="card-title mb-4">
           🗣️ Click Any Word to Hear Clear Canadian Pronunciation
         </h4>
         <div class="audio-vocab-grid">
@@ -1460,8 +1433,8 @@ const App = {
 
     container.innerHTML = `
       <div class="media-section-card">
-        <h3>${audioData.title}</h3>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">
+        <h3 class="card-title">${audioData.title}</h3>
+        <p class="card-subtitle">
           Auditory comprehension and clear English pronunciation for computer terms.
         </p>
 
@@ -1472,7 +1445,7 @@ const App = {
           
           <div class="audio-track-info">
             <div class="audio-track-title">Listen & Repeat: Spoken Audio Guidance</div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.45rem;">
+            <div class="text-sm text-muted mb-4">
               ${audioData.transcription}
             </div>
             <div class="audio-waveform-bar">
@@ -1500,14 +1473,10 @@ const App = {
 
     container.innerHTML = `
       <div class="presentation-card">
-        <div style="margin-bottom: 1.5rem;">
-          <span style="font-size: 0.8rem; font-weight: 700; color: var(--brand-blue); text-transform: uppercase;">
-            Classroom Media & Presentations
-          </span>
-          <h2 style="font-size: 1.55rem; font-weight: 800; margin: 0.35rem 0 0.4rem;">
-            📂 Files, Presentations & Video Materials
-          </h2>
-          <p style="color: var(--text-muted); font-size: 0.95rem;">
+        <div class="mb-6">
+          <span class="eyebrow">Classroom Media & Presentations</span>
+          <h2 class="card-title mt-4">📂 Files, Presentations & Video Materials</h2>
+          <p class="card-subtitle">
             All lesson presentations, illustrated PDF handbooks, quick review quizzes, and video guides in one place.
           </p>
         </div>
@@ -1530,12 +1499,7 @@ const App = {
                 >
                   <span>👁️ Preview</span>
                 </button>
-                <a
-                  href="${item.file}"
-                  download
-                  class="btn-secondary"
-                  style="padding: 0.45rem 0.85rem; font-size: 0.82rem; text-decoration: none;"
-                >
+                <a href="${item.file}" download class="btn-secondary">
                   <span>📥 Download</span>
                 </a>
               </div>
@@ -1545,29 +1509,23 @@ const App = {
           ${teacherDoc ? `
             <div class="media-file-card teacher-exclusive-card">
               <div class="media-file-top">
-                <div class="media-file-icon" style="background: #ffedd5; color: #c2410c;">🔒</div>
-                <span class="media-file-badge" style="background: #9a3412; color: #ffffff;">${teacherDoc.badge}</span>
+                <div class="media-file-icon">🔒</div>
+                <span class="media-file-badge">${teacherDoc.badge}</span>
               </div>
-              <h3 class="media-file-title" style="color: #7c2d12;">${teacherDoc.title}</h3>
-              <p class="media-file-desc" style="color: #9a3412;">
+              <h3 class="media-file-title">${teacherDoc.title}</h3>
+              <p class="media-file-desc">
                 Exclusive instructor manual with complete verbatim script, classroom timings, and offline MS Paint drills.
               </p>
-              <div class="media-file-meta" style="color: #9a3412;">📦 Size: ${teacherDoc.size} • Visible Only to Teachers</div>
+              <div class="media-file-meta">📦 Size: ${teacherDoc.size} • Visible Only to Teachers</div>
               <div class="media-file-actions">
                 <button
                   type="button"
                   class="btn-primary-sm"
-                  style="background: #9a3412;"
                   onclick="App.switchTab('teacher_notes')"
                 >
                   <span>🧑‍🏫 Open Script</span>
                 </button>
-                <a
-                  href="${teacherDoc.file}"
-                  download
-                  class="btn-secondary"
-                  style="padding: 0.45rem 0.85rem; font-size: 0.82rem; text-decoration: none; border-color: #fdba74; color: #9a3412;"
-                >
+                <a href="${teacherDoc.file}" download class="btn-secondary">
                   <span>📥 Download .DOCX</span>
                 </a>
               </div>
@@ -1595,10 +1553,12 @@ const App = {
   renderTeacherNotesSlot(container, teacherData) {
     if (!this.isTeacherAuthenticated()) {
       container.innerHTML = `
-        <div class="presentation-card" style="text-align: center; padding: 3rem;">
-          <div style="font-size: 3rem; margin-bottom: 0.75rem;">🔒</div>
-          <h3>Teacher-Exclusive Document</h3>
-          <p style="color: var(--text-muted);">Only signed-in Teachers can view the Lesson Plan and Teaching Script.</p>
+        <div class="presentation-card">
+          <div class="empty-state">
+            <span class="empty-icon">🔒</span>
+            <h3>Teacher-Exclusive Document</h3>
+            <p class="text-muted">Only signed-in Teachers can view the Lesson Plan and Teaching Script.</p>
+          </div>
         </div>
       `;
       return;
@@ -1611,25 +1571,22 @@ const App = {
 
     let exclusiveDocBanner = exclusiveDoc ? `
       <div class="teacher-exclusive-banner">
-        <div style="display: flex; align-items: center; gap: 0.9rem;">
-          <div style="font-size: 2.3rem;">📝</div>
-          <div>
-            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-              <strong style="font-size: 1.08rem; color: #7c2d12;">${exclusiveDoc.title}</strong>
-              <span style="background: #9a3412; color: #fff; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 999px;">
-                ${exclusiveDoc.badge}
-              </span>
+        <div class="row">
+          <div class="teacher-mode-icon">📝</div>
+          <div class="teacher-mode-text">
+            <div class="row row-wrap gap-sm">
+              <h3>${exclusiveDoc.title}</h3>
+              <span class="badge badge-teacher">${exclusiveDoc.badge}</span>
             </div>
-            <div style="font-size: 0.86rem; color: #9a3412; margin-top: 0.2rem;">
+            <p>
               Original instructor document (${exclusiveDoc.size}) — hidden from student accounts.
-            </div>
+            </p>
           </div>
         </div>
         <a 
           href="${exclusiveDoc.file}" 
           download 
-          class="btn-primary-sm" 
-          style="background: #9a3412; text-decoration: none; padding: 0.65rem 1.2rem;"
+          class="btn-primary-sm is-teacher"
         >
           <span>📥 Download Teaching Script (.DOCX)</span>
         </a>
@@ -1646,8 +1603,8 @@ const App = {
     ` : '';
 
     let scriptBlocksHtml = (teacherData.scriptBlocks || []).length > 0 ? `
-      <div style="margin-bottom: 1.75rem;">
-        <h3 style="font-size: 1.25rem; font-weight: 800; color: #9a3412; margin-bottom: 0.85rem;">
+      <div class="mb-6">
+        <h3 class="card-title mb-4">
           🎙️ Block-by-Block Verbatim Teaching Script
         </h3>
         <div class="script-blocks-stack">
@@ -1674,56 +1631,61 @@ const App = {
     ` : '';
 
     let tracksHtml = (teacherData.practiceTracks && teacherData.practiceTracks.length > 0) ? `
-      <div style="margin-top: 1.75rem;">
-        <h3 style="font-size: 1.2rem; font-weight: 800; color: #9a3412; margin-bottom: 0.75rem;">
+      <div class="mt-6">
+        <h3 class="card-title mb-4">
           🎮 Online & Offline Practice Tracks (Block 4)
         </h3>
         <div class="table-card">
-          <table class="metrics-table">
-            <thead>
-              <tr>
-                <th>Track</th>
-                <th>Software / Tool</th>
-                <th>Primary Skill</th>
-                <th>Instructional Focus</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${teacherData.practiceTracks.map(tr => `
+          <div class="table-scroll">
+            <table class="metrics-table">
+              <thead>
                 <tr>
-                  <td><strong>${tr.track}</strong></td>
-                  <td>${tr.tool}</td>
-                  <td>${tr.skill}</td>
-                  <td>${tr.focus}</td>
+                  <th>Track</th>
+                  <th>Software / Tool</th>
+                  <th>Primary Skill</th>
+                  <th>Instructional Focus</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${teacherData.practiceTracks.map(tr => `
+                  <tr>
+                    <td><strong>${tr.track}</strong></td>
+                    <td>${tr.tool}</td>
+                    <td>${tr.skill}</td>
+                    <td>${tr.focus}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     ` : '';
 
     container.innerHTML = `
       <div class="presentation-card">
-        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
-          <span style="font-size: 2rem;">🧑‍🏫</span>
+        <div class="row mb-6">
+          <div class="teacher-mode-icon">🧑‍🏫</div>
           <div>
-            <h2 style="font-size: 1.5rem; font-weight: 800; color: #9a3412;">Teacher & Instructor Guide</h2>
-            <p style="color: #7c2d12; font-size: 0.95rem;">Methodological, psychological, and classroom facilitation guide for ESL/CLB learners</p>
+            <h2 class="card-title">Teacher & Instructor Guide</h2>
+            <p class="card-subtitle">Methodological, psychological, and classroom facilitation guide for ESL/CLB learners</p>
           </div>
         </div>
 
         ${exclusiveDocBanner}
         ${courseMetaHtml}
 
-        <div style="background: #fff7ed; border-left: 4px solid #ea580c; padding: 1.25rem; border-radius: 6px; margin-bottom: 1.75rem;">
-          <h4 style="font-size: 1.05rem; font-weight: 800; color: #9a3412; margin-bottom: 0.35rem;">🎯 Core Learning Objective</h4>
-          <p style="color: #7c2d12; font-size: 0.98rem; line-height: 1.5;">${teacherData.learningGoal}</p>
+        <div class="teacher-mode-banner mb-6">
+          <div class="teacher-mode-icon">🎯</div>
+          <div class="teacher-mode-text">
+            <h3>Core Learning Objective</h3>
+            <p>${teacherData.learningGoal}</p>
+          </div>
         </div>
 
-        <div style="margin-bottom: 1.75rem;">
-          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.75rem;">💡 Key Pedagogical Rules & Techniques</h3>
-          <ul class="teacher-tips-list" style="line-height: 1.6;">
+        <div class="mb-6">
+          <h3 class="card-title mb-4">💡 Key Pedagogical Rules & Techniques</h3>
+          <ul class="teacher-tips-list">
             ${tipsHtml}
           </ul>
         </div>
@@ -1764,11 +1726,11 @@ const App = {
         <!-- Header Strip -->
         <div class="admin-header-strip">
           <div>
-            <h2 style="font-size: 1.55rem; font-weight: 800; display: flex; align-items: center; gap: 0.6rem;">
+            <h2>
               <span>🛡️</span>
               <span>Administrator Center</span>
             </h2>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">
+            <p>
               Manage evaluation metrics, personalized teacher accounts, and registered student profiles
             </p>
           </div>
@@ -1854,12 +1816,14 @@ const App = {
     if (filteredLogs.length === 0) {
       rowsHtml = `
         <tr>
-          <td colspan="7" style="text-align: center; color: var(--text-light); padding: 2.5rem 1rem;">
-            <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">🔍</div>
-            <strong style="color: var(--text-main);">No evaluation records match the active filters.</strong>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
-              Try resetting the student or activity filters above.
-            </p>
+          <td colspan="7">
+            <div class="empty-state">
+              <span class="empty-icon">🔍</span>
+              <strong class="text-strong">No evaluation records match the active filters.</strong>
+              <p class="text-sm text-muted mt-4">
+                Try resetting the student or activity filters above.
+              </p>
+            </div>
           </td>
         </tr>
       `;
@@ -1867,8 +1831,8 @@ const App = {
       filteredLogs.forEach((log) => {
         const isPassed = (log.scorePercent || 0) >= 70;
         const statusBadge = isPassed 
-          ? `<span style="background: #ecfdf5; color: #059669; font-weight: 700; padding: 3px 8px; border-radius: 999px; font-size: 0.75rem;">PASSED</span>`
-          : `<span style="background: #fef2f2; color: #dc2626; font-weight: 700; padding: 3px 8px; border-radius: 999px; font-size: 0.75rem;">REVIEW</span>`;
+          ? `<span class="status-pill passed">PASSED</span>`
+          : `<span class="status-pill review">REVIEW</span>`;
 
         const dateStr = new Date(log.timestamp).toLocaleString('en-CA', {
           dateStyle: 'short',
@@ -1880,9 +1844,9 @@ const App = {
           : '';
 
         rowsHtml += `
-          <tr style="cursor: pointer;" onclick="if(event.target.tagName !== 'BUTTON') App.inspectMetric('${log.id}')">
+          <tr onclick="if(event.target.tagName !== 'BUTTON') App.inspectMetric('${log.id}')">
             <td>
-              <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <div class="row gap-sm">
                 ${studentAvatarSvg}
                 <div>
                   <strong class="student-tag">${log.studentName}</strong>
@@ -1891,36 +1855,33 @@ const App = {
             </td>
             <td>
               <strong>${log.moduleTitle}</strong>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">${log.moduleCode || log.moduleId || 'Evaluation'}</div>
+              <div class="cell-sub">${log.moduleCode || log.moduleId || 'Evaluation'}</div>
             </td>
             <td>${dateStr}</td>
             <td>
-              <span style="font-weight: 800; color: ${isPassed ? '#059669' : '#dc2626'};">${log.scorePercent}%</span>
-              <span style="font-size: 0.8rem; color: var(--text-muted);">(${log.correctCount}/${log.totalQuestions})</span>
+              <span class="${isPassed ? 'score-pass' : 'score-fail'}">${log.scorePercent}%</span>
+              <span class="cell-sub">(${log.correctCount}/${log.totalQuestions})</span>
             </td>
             <td>${Math.floor((log.durationSeconds || 0) / 60)}m ${(log.durationSeconds || 0) % 60}s</td>
             <td>${statusBadge}</td>
             <td>
-              <div style="display: flex; gap: 0.35rem; align-items: center;">
+              <div class="cell-actions">
                 <button 
-                  class="btn-secondary" 
-                  style="padding: 0.35rem 0.65rem; font-size: 0.8rem; font-weight: 700; color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe;" 
+                  class="btn-secondary btn-sm" 
                   onclick="event.stopPropagation(); App.inspectMetric('${log.id}')"
                   title="View detailed questions and answers on screen"
                 >
                   👁️ Inspect
                 </button>
                 <button 
-                  class="btn-secondary" 
-                  style="padding: 0.35rem 0.6rem; font-size: 0.8rem;" 
+                  class="btn-secondary btn-sm" 
                   onclick="event.stopPropagation(); App.downloadSingleTxt('${log.id}')"
                   title="Download .txt report for this attempt"
                 >
                   📄 .TXT
                 </button>
                 <button 
-                  class="btn-secondary" 
-                  style="padding: 0.35rem 0.55rem; font-size: 0.8rem; color: #dc2626; border-color: #fca5a5;" 
+                  class="btn-danger btn-sm" 
                   onclick="event.stopPropagation(); App.deleteMetric('${log.id}')"
                   title="Delete this evaluation record"
                 >
@@ -1935,25 +1896,24 @@ const App = {
 
     return `
       <!-- Turso SQLite Cloud Database Banner -->
-      <div class="google-sync-card" style="display: flex; align-items: center; justify-content: space-between; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <div style="font-size: 1.6rem; background: #dcfce7; padding: 0.4rem 0.6rem; border-radius: 8px;">🗄️</div>
+      <div class="db-status-card">
+        <div class="row">
+          <div class="db-status-icon">🗄️</div>
           <div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <strong style="color: #166534; font-size: 0.98rem;">Turso SQLite Database Connected</strong>
-              <span style="background: #22c55e; color: white; font-size: 0.7rem; font-weight: 800; padding: 2px 7px; border-radius: 999px;">LIVE SQLITE</span>
+            <div class="row gap-sm">
+              <strong class="db-status-title">Turso SQLite Database Connected</strong>
+              <span class="live-pill">LIVE SQLITE</span>
             </div>
-            <div style="font-size: 0.82rem; color: #15803d; margin-top: 2px;">
+            <div class="db-status-sub">
               Serverless SQLite database active (Montreal, Canada) • Real-time synchronization across all devices
             </div>
           </div>
         </div>
 
-        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+        <div class="row row-wrap gap-sm">
           <button 
             type="button" 
-            class="btn-secondary" 
-            style="padding: 0.45rem 0.95rem; font-size: 0.85rem; font-weight: 700; background: #ffffff; color: #166534; border-color: #86efac;" 
+            class="btn-secondary btn-sm" 
             onclick="App.syncWithSqlite()"
             title="Fetch latest student records and metrics directly from Turso SQLite"
           >
@@ -1961,8 +1921,7 @@ const App = {
           </button>
           <button 
             type="button" 
-            class="btn-secondary" 
-            style="padding: 0.45rem 0.95rem; font-size: 0.85rem; font-weight: 700; background: #ffffff; color: #1e3a8a; border-color: #bfdbfe;" 
+            class="btn-secondary btn-sm" 
             onclick="App.printAdminReport()"
             title="Print this student report on A4 paper or save as PDF"
           >
@@ -1972,90 +1931,84 @@ const App = {
       </div>
 
       <!-- Comprehensive Metrics Toolbar -->
-      <div style="background: var(--bg-card); padding: 1rem 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.85rem;">
-          <!-- Filter Controls -->
-          <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;">
-            <!-- Filter by Student -->
-            <div style="display: flex; align-items: center; gap: 0.35rem;">
-              <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted);">👤 Student:</label>
-              <select 
-                class="admin-filter-select" 
-                onchange="App.setMetricFilter('student', this.value)"
-                style="padding: 0.45rem 0.65rem; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.85rem; font-weight: 600; background: var(--bg-page); color: var(--text-color);"
-              >
-                <option value="ALL" ${this.adminMetricFilterStudent === 'ALL' ? 'selected' : ''}>All Students (${uniqueStudentNames.length})</option>
-                ${uniqueStudentNames.map(name => `
-                  <option value="${name}" ${this.adminMetricFilterStudent.toLowerCase() === name.toLowerCase() ? 'selected' : ''}>${name}</option>
-                `).join('')}
-              </select>
-            </div>
-
-            <!-- Filter by Activity Type -->
-            <div style="display: flex; align-items: center; gap: 0.35rem;">
-              <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted);">🎯 Activity:</label>
-              <select 
-                class="admin-filter-select" 
-                onchange="App.setMetricFilter('type', this.value)"
-                style="padding: 0.45rem 0.65rem; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.85rem; font-weight: 600; background: var(--bg-page); color: var(--text-color);"
-              >
-                <option value="ALL" ${this.adminMetricFilterType === 'ALL' ? 'selected' : ''}>All Activities</option>
-                <option value="quiz" ${this.adminMetricFilterType === 'quiz' ? 'selected' : ''}>Curriculum Quizzes</option>
-                <option value="practice_mouse" ${this.adminMetricFilterType === 'practice_mouse' ? 'selected' : ''}>🖱️ Mouse Lab</option>
-                <option value="practice_typing" ${this.adminMetricFilterType === 'practice_typing' ? 'selected' : ''}>⌨️ Typing Lab</option>
-              </select>
-            </div>
-
-            <!-- Filter by Pass Status -->
-            <div style="display: flex; align-items: center; gap: 0.35rem;">
-              <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted);">Status:</label>
-              <select 
-                class="admin-filter-select" 
-                onchange="App.setMetricFilter('status', this.value)"
-                style="padding: 0.45rem 0.65rem; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.85rem; font-weight: 600; background: var(--bg-page); color: var(--text-color);"
-              >
-                <option value="ALL" ${this.adminMetricFilterStatus === 'ALL' ? 'selected' : ''}>All Statuses</option>
-                <option value="PASSED" ${this.adminMetricFilterStatus === 'PASSED' ? 'selected' : ''}>Passed (≥70%)</option>
-                <option value="REVIEW" ${this.adminMetricFilterStatus === 'REVIEW' ? 'selected' : ''}>Needs Review (<70%)</option>
-              </select>
-            </div>
-
-            <!-- Search Query Input -->
-            <input 
-              type="text" 
-              placeholder="🔍 Search student or module..." 
-              value="${this.adminMetricSearchQuery || ''}"
-              oninput="App.setMetricSearch(this.value)"
-              style="padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.85rem; background: var(--bg-page); color: var(--text-color); min-width: 170px;"
-            />
+      <div class="admin-toolbar">
+        <!-- Filter Controls -->
+        <div class="row row-wrap gap-sm">
+          <!-- Filter by Student -->
+          <div class="filter-group">
+            <label class="filter-label">👤 Student:</label>
+            <select 
+              class="admin-filter-select" 
+              onchange="App.setMetricFilter('student', this.value)"
+            >
+              <option value="ALL" ${this.adminMetricFilterStudent === 'ALL' ? 'selected' : ''}>All Students (${uniqueStudentNames.length})</option>
+              ${uniqueStudentNames.map(name => `
+                <option value="${name}" ${this.adminMetricFilterStudent.toLowerCase() === name.toLowerCase() ? 'selected' : ''}>${name}</option>
+              `).join('')}
+            </select>
           </div>
 
-          <!-- Export & Clear Actions -->
-          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-            ${this.adminMetricFilterStudent !== 'ALL' ? `
-              <button 
-                class="btn-primary" 
-                style="padding: 0.5rem 0.95rem; font-size: 0.85rem; font-weight: 700; background: #0284c7; border-color: #0369a1;"
-                onclick="App.downloadStudentLifetimeTxt('${encodeURIComponent(this.adminMetricFilterStudent)}')"
-                title="Download all lifetime metrics for ${this.adminMetricFilterStudent} (.txt)"
-              >
-                <span>📥 All Metrics: ${this.adminMetricFilterStudent} (.TXT)</span>
-              </button>
-            ` : ''}
-            <button class="btn-secondary" style="padding: 0.5rem 0.85rem; font-size: 0.85rem;" onclick="App.exportMasterAuditTxt()">
-              <span>📥 Export Master .TXT (${allLogs.length})</span>
-            </button>
-            <button class="btn-danger" style="padding: 0.5rem 0.75rem; font-size: 0.85rem;" onclick="App.confirmClearLogs()">
-              <span>🗑️ Clear</span>
-            </button>
+          <!-- Filter by Activity Type -->
+          <div class="filter-group">
+            <label class="filter-label">🎯 Activity:</label>
+            <select 
+              class="admin-filter-select" 
+              onchange="App.setMetricFilter('type', this.value)"
+            >
+              <option value="ALL" ${this.adminMetricFilterType === 'ALL' ? 'selected' : ''}>All Activities</option>
+              <option value="quiz" ${this.adminMetricFilterType === 'quiz' ? 'selected' : ''}>Curriculum Quizzes</option>
+              <option value="practice_mouse" ${this.adminMetricFilterType === 'practice_mouse' ? 'selected' : ''}>🖱️ Mouse Lab</option>
+              <option value="practice_typing" ${this.adminMetricFilterType === 'practice_typing' ? 'selected' : ''}>⌨️ Typing Lab</option>
+            </select>
           </div>
+
+          <!-- Filter by Pass Status -->
+          <div class="filter-group">
+            <label class="filter-label">Status:</label>
+            <select 
+              class="admin-filter-select" 
+              onchange="App.setMetricFilter('status', this.value)"
+            >
+              <option value="ALL" ${this.adminMetricFilterStatus === 'ALL' ? 'selected' : ''}>All Statuses</option>
+              <option value="PASSED" ${this.adminMetricFilterStatus === 'PASSED' ? 'selected' : ''}>Passed (≥70%)</option>
+              <option value="REVIEW" ${this.adminMetricFilterStatus === 'REVIEW' ? 'selected' : ''}>Needs Review (<70%)</option>
+            </select>
+          </div>
+
+          <!-- Search Query Input -->
+          <input 
+            type="text" 
+            class="admin-search-input"
+            placeholder="🔍 Search student or module..." 
+            value="${this.adminMetricSearchQuery || ''}"
+            oninput="App.setMetricSearch(this.value)"
+          />
+        </div>
+
+        <!-- Export & Clear Actions -->
+        <div class="row row-wrap gap-sm">
+          ${this.adminMetricFilterStudent !== 'ALL' ? `
+            <button 
+              class="btn-primary-sm" 
+              onclick="App.downloadStudentLifetimeTxt('${encodeURIComponent(this.adminMetricFilterStudent)}')"
+              title="Download all lifetime metrics for ${this.adminMetricFilterStudent} (.txt)"
+            >
+              <span>📥 All Metrics: ${this.adminMetricFilterStudent} (.TXT)</span>
+            </button>
+          ` : ''}
+          <button class="btn-secondary btn-sm" onclick="App.exportMasterAuditTxt()">
+            <span>📥 Export Master .TXT (${allLogs.length})</span>
+          </button>
+          <button class="btn-danger btn-sm" onclick="App.confirmClearLogs()">
+            <span>🗑️ Clear</span>
+          </button>
         </div>
       </div>
 
       <!-- Metric Stat Cards -->
       <div class="admin-stats-row">
         <div class="stat-metric-card">
-          <div class="stat-icon" style="background: #eff6ff; color: #1e40af;">👥</div>
+          <div class="stat-icon">👥</div>
           <div>
             <div class="stat-value">${totalAttempts}</div>
             <div class="stat-label">Displayed Evaluations</div>
@@ -2063,7 +2016,7 @@ const App = {
         </div>
 
         <div class="stat-metric-card">
-          <div class="stat-icon" style="background: #ecfdf5; color: #059669;">📈</div>
+          <div class="stat-icon tone-success">📈</div>
           <div>
             <div class="stat-value">${avgScore}%</div>
             <div class="stat-label">Average Cohort Score</div>
@@ -2071,7 +2024,7 @@ const App = {
         </div>
 
         <div class="stat-metric-card">
-          <div class="stat-icon" style="background: #fef3c7; color: #d97706;">🏆</div>
+          <div class="stat-icon tone-warning">🏆</div>
           <div>
             <div class="stat-value">${passedCount}</div>
             <div class="stat-label">Successful Passes (≥70%)</div>
@@ -2081,19 +2034,19 @@ const App = {
 
       <!-- Metrics Table Card -->
       <div class="table-card">
-        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <div class="table-card-head">
           <div>
-            <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0;">Student Evaluation Records</h3>
-            <span style="font-size: 0.82rem; color: var(--text-light);">Click any row or 'Inspect' to view detailed answers on screen</span>
+            <h3>Student Evaluation Records</h3>
+            <span>Click any row or 'Inspect' to view detailed answers on screen</span>
           </div>
           ${this.adminMetricFilterStudent !== 'ALL' ? `
-            <span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 700; padding: 4px 10px;">
+            <span class="badge badge-info">
               Filtered by: ${this.adminMetricFilterStudent}
             </span>
           ` : ''}
         </div>
 
-        <div style="overflow-x: auto;">
+        <div class="table-scroll">
           <table class="metrics-table">
             <thead>
               <tr>
@@ -2120,45 +2073,45 @@ const App = {
     if (!teachers || teachers.length === 0) {
       rows = `
         <tr>
-          <td colspan="6" style="text-align: center; color: var(--text-light); padding: 2rem;">
-            No teacher accounts created yet. Click "+ Create New Teacher" above.
+          <td colspan="5">
+            <div class="empty-state">
+              No teacher accounts created yet. Click "+ Create New Teacher" above.
+            </div>
           </td>
         </tr>
       `;
     } else {
-      teachers.forEach((t, idx) => {
+      teachers.forEach((t) => {
         const dateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-CA') : 'Active';
         rows += `
           <tr>
             <td>
-              <div style="display: flex; align-items: center; gap: 0.65rem;">
-                <span style="font-size: 1.4rem;">🧑‍🏫</span>
+              <div class="row gap-sm">
+                <span class="stat-icon">🧑‍🏫</span>
                 <div>
-                  <strong style="color: var(--text-main); font-size: 0.98rem;">${t.name}</strong>
-                  <div style="font-size: 0.8rem; color: var(--text-light);">${t.specialization || 'Instructor'}</div>
+                  <strong class="text-strong">${t.name}</strong>
+                  <div class="cell-sub">${t.specialization || 'Instructor'}</div>
                 </div>
               </div>
             </td>
-            <td><code style="background: var(--surface-muted); padding: 3px 8px; border-radius: 4px; font-weight: 700;">@${t.username}</code></td>
+            <td><code class="code-chip">@${t.username}</code></td>
             <td>
-              <span style="background: #fef3c7; color: #92400e; padding: 3px 9px; border-radius: 4px; font-family: var(--font-mono); font-weight: 700;">
+              <span class="secret-chip">
                 ${t.password}
               </span>
             </td>
             <td>${dateStr}</td>
             <td>
-              <div style="display: flex; gap: 0.45rem; flex-wrap: wrap;">
+              <div class="cell-actions">
                 <button 
-                  class="btn-secondary" 
-                  style="padding: 0.35rem 0.7rem; font-size: 0.82rem; font-weight: 700;"
+                  class="btn-secondary btn-sm" 
                   onclick="App.openEditTeacherModal('${t.id}')"
                   title="Edit teacher or reset password"
                 >
                   🔑 Edit / Reset
                 </button>
                 <button 
-                  class="btn-danger" 
-                  style="padding: 0.35rem 0.75rem; font-size: 0.82rem;"
+                  class="btn-danger btn-sm" 
                   onclick="App.deleteTeacher('${t.id}', '${encodeURIComponent(t.name)}')"
                   title="Delete this teacher account"
                 >
@@ -2172,17 +2125,16 @@ const App = {
     }
 
     return `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+      <div class="admin-section-head">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 800;">Personalized Teacher Accounts</h3>
-          <p style="font-size: 0.9rem; color: var(--text-muted);">
+          <h3>Personalized Teacher Accounts</h3>
+          <p>
             Teachers log in with their personal username and password set by the administrator.
           </p>
         </div>
 
         <button 
-          class="download-txt-cta" 
-          style="max-width: 260px; padding: 0.75rem 1.25rem; background: #9a3412;"
+          class="btn-primary btn-pill is-teacher" 
           onclick="App.openCreateTeacherModal()"
         >
           <span>➕ Create New Teacher</span>
@@ -2190,7 +2142,7 @@ const App = {
       </div>
 
       <div class="table-card">
-        <div style="overflow-x: auto;">
+        <div class="table-scroll">
           <table class="metrics-table">
             <thead>
               <tr>
@@ -2215,8 +2167,10 @@ const App = {
     if (!students || students.length === 0) {
       rows = `
         <tr>
-          <td colspan="4" style="text-align: center; color: var(--text-light); padding: 2rem;">
-            No student accounts registered yet. Click "+ Create New Student Profile" above.
+          <td colspan="4">
+            <div class="empty-state">
+              No student accounts registered yet. Click "+ Create Student" above.
+            </div>
           </td>
         </tr>
       `;
@@ -2235,58 +2189,54 @@ const App = {
         rows += `
           <tr>
             <td>
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div class="row">
                 ${avatarSvg}
                 <div>
-                  <strong style="font-size: 1rem; color: var(--text-main);">${s.nickname}</strong>
-                  <div style="font-size: 0.8rem; color: var(--text-muted);">
+                  <strong class="text-strong">${s.nickname}</strong>
+                  <div class="cell-sub">
                     ${attemptCount > 0 ? `Completed ${attemptCount} test(s) • Avg: ${avgScore}%` : 'No tests recorded yet'}
                   </div>
                 </div>
               </div>
             </td>
             <td>
-              <span style="background: #f1f5f9; color: var(--text-muted); padding: 3px 8px; border-radius: 4px; font-family: var(--font-mono); font-weight: 700;">
+              <span class="code-chip">
                 ${s.password || '123'}
               </span>
             </td>
             <td>
-              <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                <span style="font-size: 0.85rem; color: #059669; font-weight: 700;">✓ Active Learner</span>
-                <span class="badge" style="font-size: 0.75rem; background: #e0f2fe; color: #0369a1; padding: 2px 6px; width: fit-content;">
+              <div class="row row-wrap gap-sm">
+                <span class="status-pill passed">✓ Active Learner</span>
+                <span class="badge badge-info">
                   ${attemptCount} attempt(s)
                 </span>
               </div>
             </td>
             <td>
-              <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+              <div class="cell-actions">
                 <button 
-                  class="btn-secondary" 
-                  style="padding: 0.35rem 0.65rem; font-size: 0.8rem; color: #0284c7; border-color: #bae6fd; background: #f0f9ff; font-weight: 700;"
+                  class="btn-secondary btn-sm" 
                   onclick="App.viewStudentMetrics('${encodeURIComponent(s.nickname)}')"
                   title="View this student's evaluations on screen in Metrics tab"
                 >
                   👁️ View Metrics (${attemptCount})
                 </button>
                 <button 
-                  class="btn-secondary" 
-                  style="padding: 0.35rem 0.65rem; font-size: 0.8rem; font-weight: 700; color: #047857; border-color: #a7f3d0; background: #ecfdf5;"
+                  class="btn-secondary btn-sm" 
                   onclick="App.downloadStudentLifetimeTxt('${encodeURIComponent(s.nickname)}')"
                   title="Download complete lifetime metrics report for ${s.nickname} (.txt)"
                 >
                   📥 All-Time .TXT
                 </button>
                 <button 
-                  class="btn-secondary" 
-                  style="padding: 0.35rem 0.65rem; font-size: 0.8rem; font-weight: 700;"
+                  class="btn-secondary btn-sm" 
                   onclick="App.openEditStudentModal('${encodeURIComponent(s.nickname)}')"
                   title="Reset password or update student avatar"
                 >
                   🔑 Reset Pass
                 </button>
                 <button 
-                  class="btn-danger" 
-                  style="padding: 0.35rem 0.65rem; font-size: 0.8rem;"
+                  class="btn-danger btn-sm" 
                   onclick="App.deleteStudent('${encodeURIComponent(s.nickname)}')"
                   title="Delete this student account"
                 >
@@ -2300,36 +2250,33 @@ const App = {
     }
 
     return `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+      <div class="admin-section-head">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 800;">Registered Student Accounts</h3>
-          <p style="font-size: 0.9rem; color: var(--text-muted);">
+          <h3>Registered Student Accounts</h3>
+          <p>
             Manage student profiles, passwords, and assigned diverse avatars.
           </p>
         </div>
 
-        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+        <div class="row row-wrap gap-sm">
           <button 
             type="button"
-            class="btn-secondary" 
-            style="padding: 0.6rem 1.1rem; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem; background: #f0fdf4; border-color: #86efac; color: #15803d;"
+            class="btn-secondary btn-pill" 
             onclick="App.downloadDatabaseJson()"
             title="Export full database backup as JSON"
           >
             <span>💾 Backup SQLite (.json)</span>
           </button>
           <label 
-            class="btn-secondary" 
-            style="padding: 0.6rem 1.1rem; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;"
+            class="btn-secondary btn-pill" 
             title="Import and restore database backup JSON"
           >
             <span>📂 Restore SQLite (.json)</span>
-            <input type="file" accept=".json" style="display: none;" onchange="App.handleImportDatabase(event)" />
+            <input type="file" accept=".json" class="sr-only" onchange="App.handleImportDatabase(event)" />
           </label>
           <button 
             type="button"
-            class="download-txt-cta" 
-            style="max-width: 240px; padding: 0.6rem 1.15rem;"
+            class="btn-primary btn-pill" 
             onclick="App.openCreateStudentModal()"
           >
             <span>➕ Create Student</span>
@@ -2338,7 +2285,7 @@ const App = {
       </div>
 
       <div class="table-card">
-        <div style="overflow-x: auto;">
+        <div class="table-scroll">
           <table class="metrics-table">
             <thead>
               <tr>
@@ -2702,7 +2649,7 @@ const App = {
     }
 
     if (titleEl) {
-      titleEl.innerHTML = `${item.studentName} <span style="font-weight: 500; font-size: 0.95rem; color: var(--text-muted);">— ${item.moduleTitle}</span>`;
+      titleEl.innerHTML = `${item.studentName} <span class="text-muted text-sm">— ${item.moduleTitle}</span>`;
     }
 
     const dateStr = new Date(item.timestamp).toLocaleString('en-CA');
@@ -2714,7 +2661,7 @@ const App = {
       subEl.innerHTML = `
         <strong>${item.scorePercent}% Score</strong> (${item.correctCount}/${item.totalQuestions}) • 
         ⏱️ ${min}m ${sec}s • 📅 ${dateStr} • 
-        <span style="color: ${isPassed ? '#059669' : '#dc2626'}; font-weight: 700;">${isPassed ? 'PASSED' : 'NEEDS REVIEW'}</span>
+        <span class="status-pill ${isPassed ? 'passed' : 'review'}">${isPassed ? 'PASSED' : 'NEEDS REVIEW'}</span>
       `;
     }
 
@@ -2723,50 +2670,50 @@ const App = {
     }
 
     let bodyHtml = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;">
-        <div style="background: var(--bg-surface); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center;">
-          <div style="font-size: 0.75rem; color: var(--text-muted);">FINAL SCORE</div>
-          <div style="font-size: 1.4rem; font-weight: 800; color: ${isPassed ? '#059669' : '#dc2626'};">${item.scorePercent}%</div>
+      <div class="admin-stats-row mb-4">
+        <div class="mini-stat">
+          <div class="mini-stat-label">FINAL SCORE</div>
+          <div class="mini-stat-value ${isPassed ? 'score-pass' : 'score-fail'}">${item.scorePercent}%</div>
         </div>
-        <div style="background: var(--bg-surface); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center;">
-          <div style="font-size: 0.75rem; color: var(--text-muted);">CORRECT / TOTAL</div>
-          <div style="font-size: 1.4rem; font-weight: 800; color: var(--text-main);">${item.correctCount} / ${item.totalQuestions}</div>
+        <div class="mini-stat">
+          <div class="mini-stat-label">CORRECT / TOTAL</div>
+          <div class="mini-stat-value">${item.correctCount} / ${item.totalQuestions}</div>
         </div>
-        <div style="background: var(--bg-surface); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center;">
-          <div style="font-size: 0.75rem; color: var(--text-muted);">TIME SPENT</div>
-          <div style="font-size: 1.4rem; font-weight: 800; color: var(--brand-blue);">${min}m ${sec}s</div>
+        <div class="mini-stat">
+          <div class="mini-stat-label">TIME SPENT</div>
+          <div class="mini-stat-value">${min}m ${sec}s</div>
         </div>
       </div>
 
-      <h4 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 0.75rem; color: var(--text-main);">
+      <h4 class="text-sm text-strong mb-4">
         📋 Detailed Questions & Answers Breakdown:
       </h4>
     `;
 
     if (Array.isArray(item.details) && item.details.length > 0) {
-      bodyHtml += `<div style="display: flex; flex-direction: column; gap: 0.85rem;">`;
+      bodyHtml += `<div class="stack">`;
       item.details.forEach((det, idx) => {
         let answerStr = det.userAnswer;
         if (Array.isArray(answerStr)) answerStr = answerStr.join(', ');
-        if (!answerStr) answerStr = '<em style="color: var(--text-muted);">No answer provided</em>';
+        if (!answerStr) answerStr = '<em class="text-muted">No answer provided</em>';
 
         bodyHtml += `
-          <div style="padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid ${det.isCorrect ? '#bbf7d0' : '#fecaca'}; background: ${det.isCorrect ? '#f0fdf4' : '#fef2f2'};">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.4rem;">
-              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-main);">
+          <div class="panel-muted">
+            <div class="row-between mb-4">
+              <span class="text-sm text-strong">
                 #${idx + 1}. ${det.prompt || 'Question'}
               </span>
-              <span style="font-size: 0.75rem; font-weight: 800; padding: 2px 7px; border-radius: 4px; background: ${det.isCorrect ? '#10b981' : '#ef4444'}; color: #ffffff;">
+              <span class="status-pill ${det.isCorrect ? 'passed' : 'review'}">
                 ${det.isCorrect ? '✓ CORRECT' : '✗ REVIEW'}
               </span>
             </div>
 
-            <div style="font-size: 0.85rem; color: var(--text-main); margin-bottom: 0.25rem;">
-              <strong>Learner Response:</strong> <span style="font-family: inherit;">${answerStr}</span>
+            <div class="text-sm">
+              <strong>Learner Response:</strong> <span>${answerStr}</span>
             </div>
 
             ${det.explanation ? `
-              <div style="font-size: 0.8rem; color: var(--text-muted); background: rgba(255,255,255,0.7); padding: 0.4rem 0.6rem; border-radius: 4px; margin-top: 0.35rem;">
+              <div class="text-xs text-muted mt-4">
                 💡 <strong>Guidance note:</strong> ${det.explanation}
               </div>
             ` : ''}
@@ -2776,7 +2723,7 @@ const App = {
       bodyHtml += `</div>`;
     } else {
       bodyHtml += `
-        <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); background: var(--bg-surface); border-radius: 8px;">
+        <div class="empty-state">
           Overall evaluation result: ${item.scorePercent}% (${item.correctCount}/${item.totalQuestions} items verified).
         </div>
       `;
