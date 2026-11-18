@@ -24,6 +24,7 @@ const TypingTrainer = {
   soundEnabled: true,
   audioCtx: null,
   isFinished: false,
+  isFullscreen: false,
   boundKeyHandler: null,
   autoAdvanceTimer: null,
   autoAdvanceInterval: null,
@@ -154,6 +155,58 @@ const TypingTrainer = {
     this.cleanupTimers();
     if (this.activeLessonIndex < this.lessons.length - 1) {
       this.init(null, this.activeLessonIndex + 1);
+    }
+  },
+
+  toggleFullscreen() {
+    if (this.isFullscreen) this.exitFullscreen();
+    else this.enterFullscreen();
+  },
+
+  enterFullscreen() {
+    this.isFullscreen = true;
+    this.syncFullscreenUI();
+    if (typeof document !== 'undefined' && document.documentElement && document.documentElement.requestFullscreen && !document.fullscreenElement) {
+      try {
+        const res = document.documentElement.requestFullscreen();
+        if (res && res.catch) res.catch(() => {});
+      } catch (e) {}
+    }
+  },
+
+  exitFullscreen() {
+    this.isFullscreen = false;
+    this.syncFullscreenUI();
+    if (typeof document !== 'undefined' && document.fullscreenElement && document.exitFullscreen) {
+      try {
+        const res = document.exitFullscreen();
+        if (res && res.catch) res.catch(() => {});
+      } catch (e) {}
+    }
+  },
+
+  syncFullscreenUI() {
+    if (typeof document === 'undefined') return;
+    const root = document.getElementById('typing-lab-root');
+    const btn = document.getElementById('typing-fullscreen-btn');
+    if (root) root.classList.toggle('lab-fullscreen-active', this.isFullscreen);
+    if (document.body && document.body.classList) {
+      document.body.classList.toggle('lab-body-fullscreen', this.isFullscreen);
+    }
+    if (btn) {
+      btn.classList.toggle('is-active', this.isFullscreen);
+      btn.innerHTML = this.isFullscreen ? '⤓ Exit Fullscreen' : '⛶ Fullscreen';
+      btn.setAttribute('aria-pressed', this.isFullscreen ? 'true' : 'false');
+    }
+  },
+
+  exitLab() {
+    this.exitFullscreen();
+    this.cleanup();
+    this.containerEl = null;
+    if (typeof App !== 'undefined') {
+      App.activeLab = null;
+      App.renderModulesList();
     }
   },
 
@@ -288,6 +341,11 @@ const TypingTrainer = {
   },
 
   handleKeyDown(e) {
+    if (e.key === 'Escape') {
+      if (this.isFullscreen) this.exitFullscreen();
+      return;
+    }
+
     if (this.isFinished) return;
 
     // Ignore modifier keys by themselves
@@ -362,13 +420,17 @@ const TypingTrainer = {
     const accuracy = this.calculateAccuracy();
     const wpm = this.calculateWpm();
     const activeStudent = StorageService.getActiveStudent();
-    const studentName = activeStudent.nickname || 'Student';
+    const activeTeacher = StorageService.getActiveTeacher ? StorageService.getActiveTeacher() : null;
+    const studentName = activeStudent
+      ? (activeStudent.nickname || 'Student')
+      : (activeTeacher ? `${activeTeacher.name} (Instructor)` : 'Student');
+    const avatarId = (activeStudent && activeStudent.avatarId) ? activeStudent.avatarId : 'avatar_hijab_teal';
     const lesson = this.lessons[this.activeLessonIndex];
 
     // Record Metric
     const metricRecord = {
       studentName: studentName,
-      avatarId: activeStudent.avatarId || 'avatar_hijab_teal',
+      avatarId: avatarId,
       moduleId: `lab_typing_${lesson.id}`,
       moduleCode: 'LAB_KEYBOARD_STAMINA',
       moduleTitle: `Keyboard Lab: ${lesson.title}`,
@@ -392,50 +454,46 @@ const TypingTrainer = {
     const container = document.getElementById('typing-simulator-container');
     if (container) {
       container.innerHTML = `
-        <div class="quiz-results-banner" style="margin: 0 auto; max-width: 680px; text-align: center;">
+        <div class="quiz-results-banner">
           <div class="results-icon-celebration">🎉 ⌨️ 🌟</div>
-          <h2 style="font-size: 2.1rem; font-weight: 800; color: #1e3a8a; margin-bottom: 0.5rem;">
-            Congratulations, ${studentName}!
-          </h2>
-          <p style="font-size: 1.15rem; color: #059669; font-weight: 700; margin-bottom: 1.25rem;">
-            🌟 You completed: ${lesson.title}!
-          </p>
+          <h2>Congratulations, ${studentName}!</h2>
+          <p class="results-lead">🌟 You completed: ${lesson.title}!</p>
 
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-            <div style="background: var(--bg-surface); padding: 1.1rem; border-radius: 12px; border: 1px solid var(--border-color);">
-              <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">SPEED</div>
-              <div style="font-size: 1.9rem; font-weight: 800; color: var(--primary-color);">${wpm} <span style="font-size: 0.95rem;">WPM</span></div>
+          <div class="typing-results-grid">
+            <div class="typing-result-metric">
+              <div class="typing-result-label">SPEED</div>
+              <div class="typing-result-val">${wpm} <span class="text-sm">WPM</span></div>
             </div>
-            <div style="background: var(--bg-surface); padding: 1.1rem; border-radius: 12px; border: 1px solid var(--border-color);">
-              <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">ACCURACY</div>
-              <div style="font-size: 1.9rem; font-weight: 800; color: ${accuracy >= 85 ? '#10b981' : '#f59e0b'};">${accuracy}%</div>
+            <div class="typing-result-metric">
+              <div class="typing-result-label">ACCURACY</div>
+              <div class="typing-result-val ${accuracy >= 85 ? 'score-pass' : 'score-fail'}">${accuracy}%</div>
             </div>
-            <div style="background: var(--bg-surface); padding: 1.1rem; border-radius: 12px; border: 1px solid var(--border-color);">
-              <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">TIME</div>
-              <div style="font-size: 1.9rem; font-weight: 800; color: var(--text-color);">${duration}s</div>
+            <div class="typing-result-metric">
+              <div class="typing-result-label">TIME</div>
+              <div class="typing-result-val">${duration}s</div>
             </div>
           </div>
 
-          <div class="results-score-badge ${accuracy >= 70 ? 'passed' : 'failed'}" style="margin-bottom: 2rem; font-size: 1.05rem; padding: 0.75rem 1.5rem;">
+          <div class="results-score-badge ${accuracy >= 70 ? 'passed' : 'failed'}">
             ${accuracy >= 70 ? '🎉 Excellent Muscle Memory & Rhythm!' : '⚠️ Good effort! Try once more for higher accuracy!'}
           </div>
 
           ${this.activeLessonIndex < this.lessons.length - 1 ? `
-            <div class="auto-advance-badge" id="typing-auto-advance-badge" style="margin: 0 auto 1.5rem auto;">
-              <span>⏳ Switching to next lesson in <strong id="typing-countdown-display" style="color: #047857; font-size: 1.15rem;">2</strong>s...</span>
+            <div class="auto-advance-badge" id="typing-auto-advance-badge">
+              <span>⏳ Switching to next lesson in <strong id="typing-countdown-display">2</strong>s...</span>
             </div>
           ` : ''}
 
-          <div style="display: flex; gap: 0.85rem; justify-content: center; flex-wrap: wrap;">
+          <div class="results-actions">
             ${this.activeLessonIndex < this.lessons.length - 1 ? `
-              <button class="btn-primary" style="padding: 0.85rem 1.6rem; font-weight: 800; font-size: 1rem; background: #059669;" onclick="TypingTrainer.nextLesson()">
+              <button class="btn-primary is-success" onclick="TypingTrainer.nextLesson()">
                 <span>Next Lesson (${this.activeLessonIndex + 2}) ➜</span>
               </button>
             ` : ''}
-            <button class="btn-secondary" style="padding: 0.85rem 1.25rem;" onclick="TypingTrainer.init(null, ${this.activeLessonIndex})">
+            <button class="btn-secondary" onclick="TypingTrainer.init(null, ${this.activeLessonIndex})">
               <span>🔄 Retry Lesson</span>
             </button>
-            <button class="btn-secondary" style="padding: 0.85rem 1.25rem;" onclick="App.renderModulesList()">
+            <button class="btn-secondary" onclick="TypingTrainer.exitLab()">
               <span>← Return to Curriculum</span>
             </button>
           </div>
@@ -464,24 +522,25 @@ const TypingTrainer = {
   },
 
   renderSimulator(container) {
-    const parent = container || document.getElementById('lesson-content-viewport') || document.getElementById('app-main-content');
+    const parent = container || this.containerEl || document.getElementById('lesson-content-viewport') || document.getElementById('app-main-content');
     if (!parent) return;
+    this.containerEl = parent;
 
     const lesson = this.lessons[this.activeLessonIndex];
 
     parent.innerHTML = `
-      <div class="typing-lab-wrapper">
-        <!-- Lab Header -->
+      <div id="typing-lab-root" class="typing-lab-wrapper ${this.isFullscreen ? 'lab-fullscreen-active' : ''}">
+        <!-- Studio Command Header -->
         <div class="lab-header-banner">
-          <div>
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-              <span class="badge" style="background: rgba(37,99,235,0.12); color: #2563eb; font-weight: 700;">LAB: KEYBOARD TRAINER</span>
-              <span style="font-size: 0.85rem; color: var(--text-muted);">Stamina & Keybr Inspired</span>
+          <div class="lab-header-main">
+            <div class="lab-eyebrow-row">
+              <span class="lab-studio-badge">⌨️ Keyboard Typing Studio • 8 Lessons</span>
+              <span class="lab-track-meta">${lesson.fingerFocus || 'Stamina & Keybr Inspired'}</span>
             </div>
-            <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-color); margin: 0;">
-              ${lesson.title}
+            <h2 class="lab-header-title">
+              <span>${lesson.title}</span>
             </h2>
-            <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
+            <p class="lab-header-objective">
               ${lesson.description}
             </p>
           </div>
@@ -493,29 +552,40 @@ const TypingTrainer = {
             <button class="btn-secondary btn-sm" onclick="TypingTrainer.init(null, ${this.activeLessonIndex})">
               🔄 Reset
             </button>
-            <button class="btn-secondary btn-sm" onclick="App.renderModulesList()">
+            <button
+              id="typing-fullscreen-btn"
+              type="button"
+              class="btn-secondary btn-sm btn-fullscreen-lab ${this.isFullscreen ? 'is-active' : ''}"
+              aria-pressed="${this.isFullscreen ? 'true' : 'false'}"
+              onclick="TypingTrainer.toggleFullscreen()"
+            >
+              ${this.isFullscreen ? '⤓ Exit Fullscreen' : '⛶ Fullscreen'}
+            </button>
+            <button class="btn-secondary btn-sm" onclick="TypingTrainer.exitLab()">
               ✕ Exit Lab
             </button>
           </div>
         </div>
 
-        <!-- Lesson Selector Pills -->
+        <!-- Lesson Selector Stepper -->
         <div class="typing-lesson-pills-bar">
           ${this.lessons.map((l, idx) => `
             <button class="lesson-pill-btn ${idx === this.activeLessonIndex ? 'active' : ''}" onclick="TypingTrainer.init(null, ${idx})">
-              ${idx + 1}. ${l.title.split('. ')[1] || l.title}
+              <span class="lesson-pill-num">0${idx + 1}</span>
+              <span>${l.title.split('. ')[1] || l.title}</span>
             </button>
           `).join('')}
         </div>
 
-        <!-- Live Metrics Bar -->
+        <!-- Live Telemetry HUD Bar -->
         <div class="typing-stats-bar">
           <div class="stat-pill" id="typing-wpm">0 WPM</div>
           <div class="stat-pill" id="typing-acc">100% Acc</div>
           <div class="stat-pill" id="typing-mistakes">❌ 0 errors</div>
           <div class="stat-pill" id="typing-time">⏱️ 0:00</div>
           <div class="typing-finger-hint" id="typing-finger-hint">
-            💡 <strong>Next Finger:</strong> <span id="finger-name-display">-</span>
+            <span>🖐️ Next Finger:</span>
+            <strong id="finger-name-display">-</strong>
           </div>
         </div>
 
@@ -541,6 +611,7 @@ const TypingTrainer = {
       </div>
     `;
 
+    this.syncFullscreenUI();
     this.renderPromptText();
     this.updateActiveKeyHighlight();
     this.updateStatsUI();
@@ -553,7 +624,9 @@ const TypingTrainer = {
     let html = '';
     for (let i = 0; i < this.targetText.length; i++) {
       const char = this.targetText[i];
-      const displayChar = char === ' ' ? '&nbsp;' : char;
+      const displayChar = char === ' '
+        ? (i === this.currentIndex ? '␣' : '&nbsp;')
+        : char;
 
       if (i < this.currentIndex) {
         html += `<span class="t-char t-char-correct">${displayChar}</span>`;

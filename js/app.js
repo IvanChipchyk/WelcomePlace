@@ -587,10 +587,12 @@ const App = {
 
   cleanupLabs() {
     if (typeof TypingTrainer !== 'undefined') {
+      if (TypingTrainer.exitFullscreen) TypingTrainer.exitFullscreen();
       if (TypingTrainer.cleanup) TypingTrainer.cleanup();
       if (TypingTrainer.cleanupTimers) TypingTrainer.cleanupTimers();
     }
     if (typeof MouseTrainer !== 'undefined') {
+      if (MouseTrainer.exitFullscreen) MouseTrainer.exitFullscreen();
       if (MouseTrainer.stopTimer) MouseTrainer.stopTimer();
       if (MouseTrainer.cleanupTimers) MouseTrainer.cleanupTimers();
     }
@@ -628,6 +630,8 @@ const App = {
   // View 1: Modules Catalog & Media Hub
   // ==========================================
   renderModulesList(container = document.getElementById('app-main-content')) {
+    this.cleanupLabs();
+    this.activeLab = null;
     this.currentModule = null;
 
     const isTeacher = this.isTeacherAuthenticated();

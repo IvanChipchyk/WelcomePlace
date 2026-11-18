@@ -25,6 +25,8 @@ const MouseTrainer = {
   elapsedSeconds: 0,
   soundEnabled: true,
   audioCtx: null,
+  isFullscreen: false,
+  boundFsKeyHandler: null,
 
   // Level State
   targetClicksNeeded: 5,
@@ -137,8 +139,75 @@ const MouseTrainer = {
     this.elapsedSeconds = 0;
     this.startTime = Date.now();
     this.startTimer();
+    this.bindFullscreenKeyListener();
 
     this.renderLab(containerElement);
+  },
+
+  bindFullscreenKeyListener() {
+    if (this.boundFsKeyHandler || typeof window === 'undefined' || !window.addEventListener) return;
+    this.boundFsKeyHandler = (e) => {
+      if (e.key === 'Escape' && this.isFullscreen) {
+        this.exitFullscreen();
+      }
+    };
+    window.addEventListener('keydown', this.boundFsKeyHandler);
+  },
+
+  toggleFullscreen() {
+    if (this.isFullscreen) this.exitFullscreen();
+    else this.enterFullscreen();
+  },
+
+  enterFullscreen() {
+    this.isFullscreen = true;
+    this.syncFullscreenUI();
+    if (typeof document !== 'undefined' && document.documentElement && document.documentElement.requestFullscreen && !document.fullscreenElement) {
+      try {
+        const res = document.documentElement.requestFullscreen();
+        if (res && res.catch) res.catch(() => {});
+      } catch (e) {}
+    }
+  },
+
+  exitFullscreen() {
+    this.isFullscreen = false;
+    this.syncFullscreenUI();
+    if (typeof document !== 'undefined' && document.fullscreenElement && document.exitFullscreen) {
+      try {
+        const res = document.exitFullscreen();
+        if (res && res.catch) res.catch(() => {});
+      } catch (e) {}
+    }
+  },
+
+  syncFullscreenUI() {
+    if (typeof document === 'undefined') return;
+    const root = document.getElementById('mouse-lab-root');
+    const btn = document.getElementById('mouse-fullscreen-btn');
+    if (root) root.classList.toggle('lab-fullscreen-active', this.isFullscreen);
+    if (document.body && document.body.classList) {
+      document.body.classList.toggle('lab-body-fullscreen', this.isFullscreen);
+    }
+    if (btn) {
+      btn.classList.toggle('is-active', this.isFullscreen);
+      btn.innerHTML = this.isFullscreen ? '⤓ Exit Fullscreen' : '⛶ Fullscreen';
+      btn.setAttribute('aria-pressed', this.isFullscreen ? 'true' : 'false');
+    }
+  },
+
+  exitLab() {
+    this.exitFullscreen();
+    this.stopTimer();
+    this.containerEl = null;
+    if (this.boundFsKeyHandler && typeof window !== 'undefined' && window.removeEventListener) {
+      window.removeEventListener('keydown', this.boundFsKeyHandler);
+      this.boundFsKeyHandler = null;
+    }
+    if (typeof App !== 'undefined') {
+      App.activeLab = null;
+      App.renderModulesList();
+    }
   },
 
   startTimer() {
@@ -337,30 +406,28 @@ const MouseTrainer = {
   },
 
   renderLab(container) {
-    const parent = container || document.getElementById('lesson-content-viewport') || document.getElementById('app-main-content');
+    const parent = container || this.containerEl || document.getElementById('lesson-content-viewport') || document.getElementById('app-main-content');
     if (!parent) return;
+    this.containerEl = parent;
 
     const skill = this.skills[this.currentSkill];
     const level = skill.levels[this.currentLevel];
+    const skillNum = Object.keys(this.skills).indexOf(this.currentSkill) + 1;
 
     parent.innerHTML = `
-      <div class="mouse-lab-master-wrapper">
-        <!-- Lab Header Banner -->
-        <div class="lab-header-banner" style="border-left: 6px solid ${skill.color};">
-          <div>
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-              <span class="badge" style="background: ${skill.color}20; color: ${skill.color}; font-weight: 800;">
-                MOUSE LAB • TECHLIT.TOOLS STYLE
-              </span>
-              <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600;">
-                Practice Track: ${skill.title}
-              </span>
+      <div id="mouse-lab-root" class="mouse-lab-master-wrapper ${this.isFullscreen ? 'lab-fullscreen-active' : ''}" style="--skill-color: ${skill.color};">
+        <!-- Studio Command Header -->
+        <div class="lab-header-banner">
+          <div class="lab-header-main">
+            <div class="lab-eyebrow-row">
+              <span class="lab-studio-badge">🖱️ Mouse Precision Studio • 24 Drills</span>
+              <span class="lab-track-meta">${skill.title}</span>
             </div>
-            <h2 style="font-size: 1.6rem; font-weight: 800; color: var(--text-color); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <h2 class="lab-header-title">
               <span>${level.icon}</span>
               <span>${level.name}</span>
             </h2>
-            <p style="font-size: 0.95rem; color: var(--text-muted); margin: 0.3rem 0 0 0;">
+            <p class="lab-header-objective">
               💡 <strong>Objective:</strong> ${level.hint}
             </p>
           </div>
@@ -372,7 +439,16 @@ const MouseTrainer = {
             <button class="btn-secondary btn-sm" onclick="MouseTrainer.replayLevel()">
               🔄 Reset Level
             </button>
-            <button class="btn-secondary btn-sm" onclick="App.renderModulesList()">
+            <button
+              id="mouse-fullscreen-btn"
+              type="button"
+              class="btn-secondary btn-sm btn-fullscreen-lab ${this.isFullscreen ? 'is-active' : ''}"
+              aria-pressed="${this.isFullscreen ? 'true' : 'false'}"
+              onclick="MouseTrainer.toggleFullscreen()"
+            >
+              ${this.isFullscreen ? '⤓ Exit Fullscreen' : '⛶ Fullscreen'}
+            </button>
+            <button class="btn-secondary btn-sm" onclick="MouseTrainer.exitLab()">
               ✕ Exit Lab
             </button>
           </div>
@@ -380,35 +456,36 @@ const MouseTrainer = {
 
         <!-- 6 Core Skill Category Tabs -->
         <div class="mouse-skills-nav-bar">
-          ${Object.values(this.skills).map(sk => `
+          ${Object.values(this.skills).map((sk, idx) => `
             <button 
               class="mouse-skill-tab-btn ${sk.id === this.currentSkill ? 'active' : ''}" 
               style="--skill-color: ${sk.color};"
               onclick="MouseTrainer.setSkill('${sk.id}')"
             >
-              <span class="skill-tab-icon">${sk.icon}</span>
+              <div class="skill-tab-top">
+                <span class="skill-tab-num">0${idx + 1}</span>
+                <span class="skill-tab-icon">${sk.icon}</span>
+              </div>
               <span class="skill-tab-title">${sk.title.split('. ')[1] || sk.title}</span>
               <span class="skill-tab-badge">${sk.badge}</span>
             </button>
           `).join('')}
         </div>
 
-        <!-- 4 Level Pills for Current Skill -->
+        <!-- 4 Level Stepper Strip -->
         <div class="mouse-level-pills-bar">
-          <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); align-self: center;">
-            Levels:
-          </span>
+          <span class="level-bar-label">Levels</span>
           ${skill.levels.map((lvl, idx) => `
             <button 
               class="level-pill-btn ${idx === this.currentLevel ? 'active' : ''}"
               onclick="MouseTrainer.setLevel(${idx})"
             >
-              ${lvl.icon} Level ${idx + 1}: ${lvl.name}
+              ${lvl.icon} L${idx + 1}: ${lvl.name}
             </button>
           `).join('')}
         </div>
 
-        <!-- Live Metrics & Score Strip -->
+        <!-- Live Telemetry HUD Strip -->
         <div class="mouse-live-strip">
           <div class="mouse-stat-pill" id="mouse-lab-progress">
             🎯 Progress: <strong>${this.currentClicks} / ${level.targetCount}</strong>
@@ -419,12 +496,12 @@ const MouseTrainer = {
           <div class="mouse-stat-pill" id="mouse-lab-timer">
             ⏱️ 0:00
           </div>
-          <div class="mouse-stat-pill" style="margin-left: auto; color: ${skill.color};">
-            Skill <strong>${Object.keys(this.skills).indexOf(this.currentSkill) + 1} of 6</strong> • Level <strong>${this.currentLevel + 1} of 4</strong>
+          <div class="mouse-stat-pill track-pill">
+            Skill <strong>${skillNum} of 6</strong> • Level <strong>${this.currentLevel + 1} of 4</strong>
           </div>
         </div>
 
-        <!-- Interactive Playground Stage Area -->
+        <!-- Interactive Studio Stage Area -->
         <div class="mouse-stage-card" id="mouse-stage-container">
           <canvas id="mouse-confetti-canvas" class="mouse-confetti-layer"></canvas>
           <div id="mouse-interactive-viewport" class="mouse-interactive-viewport">
@@ -434,6 +511,7 @@ const MouseTrainer = {
       </div>
     `;
 
+    this.syncFullscreenUI();
     this.renderActiveLevelContent();
   },
 
@@ -501,7 +579,7 @@ const MouseTrainer = {
       container.innerHTML = `
         <div class="coin-chase-board" id="coin-chase-board">
           <p class="playground-intro-text">🪙 <strong>Coin Chase:</strong> Click the shiny gold coin as it jumps around! (Collect 6 coins)</p>
-          <div id="coin-target-slot" style="position: relative; width: 100%; height: 320px;">
+          <div id="coin-target-slot" class="coin-chase-arena">
             <!-- Dynamic Coin generated via spawnCoin() -->
           </div>
         </div>
@@ -511,7 +589,7 @@ const MouseTrainer = {
       // Level 3: Number Sequence 1 to 5
       const shuffled = [3, 1, 5, 2, 4];
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
+        <div class="stage-centered-panel">
           <p class="playground-intro-text">🔢 Click numbers in exact ascending order: <strong>1 ➔ 2 ➔ 3 ➔ 4 ➔ 5</strong></p>
           <div class="sequence-numbers-grid">
             ${shuffled.map(num => `
@@ -524,7 +602,7 @@ const MouseTrainer = {
               </button>
             `).join('')}
           </div>
-          <div id="sequence-feedback" style="margin-top: 1rem; font-weight: 700; font-size: 1.1rem; color: #2563eb;">
+          <div id="sequence-feedback" class="sequence-feedback-text">
             Next expected: Click [1]
           </div>
         </div>
@@ -532,7 +610,7 @@ const MouseTrainer = {
     } else {
       // Level 4: Whack-a-Star
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
+        <div class="stage-centered-panel">
           <p class="playground-intro-text">⭐ Click the giant glowing stars as they light up in the sky!</p>
           <div class="whack-star-grid">
             ${[0, 1, 2, 3, 4, 5].map(idx => `
@@ -657,14 +735,14 @@ const MouseTrainer = {
     if (this.currentLevel === 0) {
       // Chest
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
+        <div class="stage-centered-panel">
           <p class="playground-intro-text">🎁 <strong>Double-Click:</strong> Tap two times rapidly on the treasure chest to unlock it!</p>
           <div class="interactive-chest-box" id="treasure-chest" ondblclick="MouseTrainer.handleChestDblClick(this)">
             <div class="chest-emoji" id="chest-emoji">📦</div>
-            <div style="font-weight: 800; font-size: 1.2rem; color: #1e3a8a;">LOCKED CHEST</div>
-            <div style="font-size: 0.85rem; color: var(--text-muted);">Double-click fast (under 450ms)!</div>
+            <div class="chest-title">LOCKED CHEST</div>
+            <div class="chest-sub">Double-click fast (under 450ms)!</div>
           </div>
-          <div id="chest-speed-meter" style="margin-top: 1rem; font-weight: 700; color: #8b5cf6;"></div>
+          <div id="chest-speed-meter" class="sequence-feedback-text"></div>
         </div>
       `;
     } else if (this.currentLevel === 1) {
@@ -675,7 +753,7 @@ const MouseTrainer = {
         { id: 2, title: 'Niagara Falls', emoji: '🌊', desc: 'Magnificent cascading waterfalls on the Ontario border.' }
       ];
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
+        <div class="stage-centered-panel">
           <p class="playground-intro-text">🖼️ Double-click each Canadian landmark photo card to inspect it in full view!</p>
           <div class="canada-photos-grid">
             ${photos.map(p => `
@@ -696,31 +774,31 @@ const MouseTrainer = {
     } else if (this.currentLevel === 2) {
       // App Launcher
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
+        <div class="stage-centered-panel">
           <p class="playground-intro-text">💻 Double-click desktop application icons to launch your newcomer digital tools!</p>
           <div class="desktop-apps-grid">
             <div class="desktop-app-icon" ondblclick="MouseTrainer.launchDesktopApp('🍁 Canadian Citizenship Guide', 'Everything you need to know about rights and community.')">
-              <div class="app-icon-badge" style="background: #ef4444;">🍁</div>
+              <div class="app-icon-badge app-canada">🍁</div>
               <div class="app-label">Canada Guide.app</div>
             </div>
             <div class="desktop-app-icon" ondblclick="MouseTrainer.launchDesktopApp('🩺 Provincial Health Card', 'Application portal for Ontario OHIP / Alberta AHCIP healthcare.')">
-              <div class="app-icon-badge" style="background: #10b981;">🩺</div>
+              <div class="app-icon-badge app-health">🩺</div>
               <div class="app-label">HealthCard.app</div>
             </div>
           </div>
-          <div id="desktop-window-slot" style="margin-top: 1.5rem;"></div>
+          <div id="desktop-window-slot" class="desktop-window-slot"></div>
         </div>
       `;
     } else {
       // Speed Gauge
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
+        <div class="stage-centered-panel">
           <p class="playground-intro-text">⏱️ <strong>Double-Click Speed Test:</strong> Click the target twice fast to measure your finger speed in milliseconds!</p>
           <div class="speed-gauge-card" onclick="MouseTrainer.measureClickSpeed()">
-            <div style="font-size: 3rem;">⚡</div>
-            <div style="font-size: 1.25rem; font-weight: 800;">CLICK ME FAST (2×)</div>
-            <div id="speed-result-display" style="font-size: 1.8rem; font-weight: 900; color: #2563eb; margin: 0.5rem 0;">Ready...</div>
-            <div style="font-size: 0.85rem; color: var(--text-muted);">Target: Under 450 ms</div>
+            <div class="speed-gauge-icon">⚡</div>
+            <div class="speed-gauge-cta">CLICK ME FAST (2×)</div>
+            <div id="speed-result-display" class="speed-gauge-readout">Ready...</div>
+            <div class="speed-gauge-target">Target: Under 450 ms</div>
           </div>
         </div>
       `;
@@ -732,7 +810,7 @@ const MouseTrainer = {
     this.triggerConfetti();
     el.classList.add('chest-opened');
     document.getElementById('chest-emoji').textContent = '💎 🌟 🎁';
-    el.innerHTML += `<div style="color: #10b981; font-weight: 800; font-size: 1.3rem; margin-top: 0.5rem;">UNLOCKED! 100 Jewels!</div>`;
+    el.innerHTML += `<div class="chest-unlocked-badge">UNLOCKED! 100 Jewels!</div>`;
     this.currentClicks++;
     this.updateProgressUI();
     setTimeout(() => this.completeLevelSuccess(), 700);
@@ -749,9 +827,9 @@ const MouseTrainer = {
     if (preview) {
       preview.style.display = 'block';
       preview.innerHTML = `
-        <div style="font-size: 2.5rem; margin-bottom: 0.25rem;">${emoji}</div>
-        <h4 style="font-size: 1.2rem; font-weight: 800; margin: 0 0 0.5rem 0;">${title}</h4>
-        <p style="font-size: 0.95rem; color: var(--text-muted); margin: 0;">${desc}</p>
+        <div class="photo-preview-emoji">${emoji}</div>
+        <h4 class="photo-preview-title">${title}</h4>
+        <p class="photo-preview-desc">${desc}</p>
       `;
     }
 
@@ -771,11 +849,11 @@ const MouseTrainer = {
         <div class="virtual-window">
           <div class="virtual-window-header">
             <span>💻 ${title}</span>
-            <span style="font-size: 0.8rem; color: #94a3b8;">[Active Window]</span>
+            <span class="virtual-window-meta">[Active Window]</span>
           </div>
-          <div style="padding: 1.5rem; text-align: left;">
-            <p style="font-size: 1.05rem; font-weight: 600; color: var(--text-main);">${desc}</p>
-            <div style="background: #eff6ff; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #bfdbfe; color: #1e40af; font-size: 0.88rem;">
+          <div class="virtual-window-body">
+            <p class="virtual-window-desc">${desc}</p>
+            <div class="virtual-window-ok">
               ✅ Application launched successfully via double-click!
             </div>
           </div>
@@ -841,17 +919,17 @@ const MouseTrainer = {
     }
 
     container.innerHTML = `
-      <div style="text-align: center; width: 100%;">
+      <div class="stage-centered-panel">
         <p class="playground-intro-text">
           🖱️ <strong>Right Click Practice:</strong> Click with the right mouse button (or 2-finger trackpad tap) to open the context menu!
         </p>
 
         <div class="right-click-zone" id="rc-target-zone" oncontextmenu="MouseTrainer.openContextMenu(event)">
-          <div style="font-size: 3.8rem; margin-bottom: 0.5rem;" id="rc-target-icon">${icon}</div>
-          <h3 id="rc-target-heading" style="font-size: 1.35rem; font-weight: 800; margin: 0 0 0.5rem 0; color: var(--text-color);">
+          <div class="rc-target-icon" id="rc-target-icon">${icon}</div>
+          <h3 id="rc-target-heading" class="rc-target-heading">
             ${heading}
           </h3>
-          <p id="rc-target-desc" style="font-size: 0.95rem; color: var(--text-muted); margin: 0;">
+          <p id="rc-target-desc" class="rc-target-desc">
             ${desc}
           </p>
         </div>
@@ -999,10 +1077,10 @@ const MouseTrainer = {
               ondragleave="MouseTrainer.onDragLeave(event)"
               ondrop="MouseTrainer.onAppleDrop(event)"
             >
-              <div style="font-size: 3.5rem;">🧺</div>
-              <div style="font-weight: 800; font-size: 1.15rem; color: #78350f;">Apple Basket</div>
-              <div style="font-size: 0.85rem; color: #92400e;">Drop apples here</div>
-              <div id="basket-apples-count" style="margin-top: 0.5rem; font-weight: 800; color: #b91c1c;">0 / 4 apples</div>
+              <div class="dropzone-icon-lg">🧺</div>
+              <div class="dropzone-title">Apple Basket</div>
+              <div class="dropzone-sub">Drop apples here</div>
+              <div id="basket-apples-count" class="dropzone-counter">0 / 4 apples</div>
             </div>
           </div>
         </div>
@@ -1016,7 +1094,7 @@ const MouseTrainer = {
         { id: 'star', name: 'Star', emoji: '⭐', slot: '☆' }
       ];
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
+        <div class="stage-centered-panel">
           <p class="playground-intro-text">🔺 Drag each colorful shape into its matching silhouette dropzone!</p>
           <div class="shape-sorter-board">
             <div class="shapes-draggable-bank">
@@ -1027,7 +1105,7 @@ const MouseTrainer = {
                   draggable="true"
                   ondragstart="MouseTrainer.onDragStart(event, 'shape-${s.id}', '${s.id}')"
                 >
-                  <span style="font-size: 2.2rem;">${s.emoji}</span>
+                  <span class="shape-emoji-lg">${s.emoji}</span>
                   <span>${s.name}</span>
                 </div>
               `).join('')}
@@ -1041,8 +1119,8 @@ const MouseTrainer = {
                   ondragover="MouseTrainer.onDragOver(event)"
                   ondrop="MouseTrainer.onShapeDrop(event, '${s.id}')"
                 >
-                  <span style="font-size: 2rem; color: #94a3b8;">${s.slot}</span>
-                  <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted);">${s.name} Slot</span>
+                  <span class="shape-slot-ghost">${s.slot}</span>
+                  <span class="shape-slot-label">${s.name} Slot</span>
                 </div>
               `).join('')}
             </div>
@@ -1058,7 +1136,7 @@ const MouseTrainer = {
         { id: 'card', name: 'Health Card', emoji: '🪪' }
       ];
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
+        <div class="stage-centered-panel">
           <p class="playground-intro-text">🎒 Drag all 4 Canadian newcomer essentials into your travel backpack!</p>
           <div class="backpack-scene-grid">
             <div class="backpack-items-shelf">
@@ -1069,8 +1147,8 @@ const MouseTrainer = {
                   draggable="true"
                   ondragstart="MouseTrainer.onDragStart(event, 'bp-item-${it.id}')"
                 >
-                  <span style="font-size: 2.2rem;">${it.emoji}</span>
-                  <span style="font-size: 0.9rem; font-weight: 700;">${it.name}</span>
+                  <span class="shape-emoji-lg">${it.emoji}</span>
+                  <span>${it.name}</span>
                 </div>
               `).join('')}
             </div>
@@ -1080,9 +1158,9 @@ const MouseTrainer = {
               ondragover="MouseTrainer.onDragOver(event)"
               ondrop="MouseTrainer.onBackpackDrop(event)"
             >
-              <div style="font-size: 4rem;">🎒</div>
-              <div style="font-weight: 800; font-size: 1.2rem; color: #1e3a8a;">Canada Travel Backpack</div>
-              <div id="backpack-counter" style="font-weight: 700; color: #2563eb; margin-top: 0.25rem;">0 / 4 packed</div>
+              <div class="dropzone-icon-lg">🎒</div>
+              <div class="dropzone-title">Canada Travel Backpack</div>
+              <div id="backpack-counter" class="dropzone-counter">0 / 4 packed</div>
             </div>
           </div>
         </div>
@@ -1090,7 +1168,7 @@ const MouseTrainer = {
     } else {
       // Recycle Bin
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
+        <div class="stage-centered-panel">
           <p class="playground-intro-text">🗑️ Clean up the desktop by dragging the 3 junk spam files into the Recycle Bin!</p>
           <div class="recycle-scene-grid">
             <div class="trash-files-rack">
@@ -1110,9 +1188,9 @@ const MouseTrainer = {
               ondragover="MouseTrainer.onDragOver(event)"
               ondrop="MouseTrainer.onRecycleDrop(event)"
             >
-              <div style="font-size: 4rem;">🗑️</div>
-              <div style="font-weight: 800; font-size: 1.2rem; color: #991b1b;">Recycle Bin</div>
-              <div id="trash-counter" style="font-weight: 700; color: #b91c1c;">0 / 3 cleaned</div>
+              <div class="dropzone-icon-lg">🗑️</div>
+              <div class="dropzone-title">Recycle Bin</div>
+              <div id="trash-counter" class="dropzone-counter">0 / 3 cleaned</div>
             </div>
           </div>
         </div>
@@ -1258,10 +1336,10 @@ const MouseTrainer = {
         </div>
 
         <div class="selection-feedback-strip">
-          <div style="font-size: 0.9rem; color: var(--text-muted);">
-            Currently Selected: <strong id="active-selected-text" style="color: #2563eb;">[None]</strong>
+          <div class="selection-readout-label">
+            Currently Selected: <strong id="active-selected-text" class="selection-readout-value">[None]</strong>
           </div>
-          <div id="selection-status-badge" style="font-weight: 700;"></div>
+          <div id="selection-status-badge" class="text-strong"></div>
         </div>
       </div>
     `;
@@ -1427,12 +1505,11 @@ const MouseTrainer = {
             <p>4. Always log out when using public library computers in Canada.</p>
             <p>5. Never click on suspicious email links or share your Social Insurance Number (SIN) unprompted.</p>
             <p>6. Utilize official emergency numbers 911 and community help 211 safely.</p>
-            <div style="margin: 2rem 0; padding: 1.5rem; background: #ecfdf5; border: 2px dashed #10b981; border-radius: 8px;">
+            <div class="terms-unlock-box">
               <button 
                 id="terms-agree-btn" 
-                class="btn-primary" 
+                class="btn-primary terms-agree-btn" 
                 disabled 
-                style="padding: 0.85rem 1.75rem; font-size: 1.1rem; opacity: 0.4; cursor: not-allowed;"
                 onclick="MouseTrainer.clickSecretScrollTarget(this)"
               >
                 🔒 Scroll to Bottom to Unlock Agreement
@@ -1449,10 +1526,8 @@ const MouseTrainer = {
       const btn = document.getElementById('terms-agree-btn');
       if (btn && btn.disabled) {
         btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.style.cursor = 'pointer';
+        btn.classList.add('unlocked');
         btn.innerHTML = '✅ I Read and Agree (Click to Complete)';
-        btn.style.background = '#10b981';
         this.playSound('pop');
       }
     }
@@ -1519,27 +1594,23 @@ const MouseTrainer = {
 
     viewport.innerHTML = `
       <div class="level-success-celebration">
-        <div style="font-size: 3.8rem; animation: bounce 0.8s infinite alternate;">🏆 ⭐ 🌟</div>
-        <h3 style="font-size: 1.8rem; font-weight: 800; color: #1e3a8a; margin: 0.5rem 0;">
-          Level Complete! Fantastic Job!
-        </h3>
-        <p style="font-size: 1.05rem; color: var(--text-muted); max-width: 520px; margin: 0 auto 0.75rem;">
+        <div class="celebration-icons">🏆 ⭐ 🌟</div>
+        <h3 class="celebration-title">Level Complete! Fantastic Job!</h3>
+        <p class="celebration-desc">
           You successfully completed <strong>${currentLevelObj.name}</strong> with high precision and motor confidence!
         </p>
 
         <div class="auto-advance-badge" id="mouse-auto-advance-badge">
-          <span>⏳ Switching to next exercise in <strong id="mouse-countdown-display" style="color: #047857; font-size: 1.15rem;">2</strong>s...</span>
+          <span>⏳ Switching to next exercise in <strong id="mouse-countdown-display">2</strong>s...</span>
         </div>
 
-        <div style="font-size: 0.95rem; font-weight: 700; color: #1e40af; margin-bottom: 1.25rem;">
-          ➔ ${nextLabel}
-        </div>
+        <div class="celebration-next-label">➔ ${nextLabel}</div>
 
-        <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
-          <button class="btn-primary" style="padding: 0.85rem 1.6rem; font-weight: 800; font-size: 1rem; background: #059669;" onclick="MouseTrainer.nextExercise()">
+        <div class="celebration-actions">
+          <button class="btn-primary is-success" onclick="MouseTrainer.nextExercise()">
             <span>Next Exercise ➜</span>
           </button>
-          <button class="btn-secondary" style="padding: 0.85rem 1.25rem;" onclick="MouseTrainer.replayLevel()">
+          <button class="btn-secondary" onclick="MouseTrainer.replayLevel()">
             <span>🔄 Replay Level</span>
           </button>
         </div>
@@ -1568,16 +1639,21 @@ const MouseTrainer = {
   recordTrackCompletionMetric() {
     try {
       const duration = Math.max(1, this.elapsedSeconds);
-      const activeStudent = (typeof StorageService !== 'undefined' && StorageService.getActiveStudent) 
-        ? StorageService.getActiveStudent() 
-        : { nickname: 'Student', avatarId: 'avatar_hijab_teal' };
-      const studentName = activeStudent.nickname || 'Student';
+      const activeStudent = (typeof StorageService !== 'undefined' && StorageService.getActiveStudent)
+        ? StorageService.getActiveStudent()
+        : null;
+      const activeTeacher = (typeof StorageService !== 'undefined' && StorageService.getActiveTeacher)
+        ? StorageService.getActiveTeacher()
+        : null;
+      const studentName = activeStudent
+        ? (activeStudent.nickname || 'Student')
+        : (activeTeacher ? `${activeTeacher.name} (Instructor)` : 'Student');
       const skill = this.skills[this.currentSkill];
       if (!skill) return;
 
       const metricRecord = {
         studentName: studentName,
-        avatarId: activeStudent.avatarId || 'avatar_hijab_teal',
+        avatarId: (activeStudent && activeStudent.avatarId) ? activeStudent.avatarId : 'avatar_hijab_teal',
         moduleId: `lab_mouse_${skill.id.toLowerCase()}`,
         moduleCode: 'LAB_MOUSE_PRECISION',
         moduleTitle: `Mouse Lab: ${skill.title}`,
@@ -1607,25 +1683,26 @@ const MouseTrainer = {
     this.stopTimer();
     const activeStudent = (typeof StorageService !== 'undefined' && StorageService.getActiveStudent)
       ? StorageService.getActiveStudent()
-      : { nickname: 'Student', avatarId: 'avatar_hijab_teal' };
-    const studentName = activeStudent.nickname || 'Student';
+      : null;
+    const activeTeacher = (typeof StorageService !== 'undefined' && StorageService.getActiveTeacher)
+      ? StorageService.getActiveTeacher()
+      : null;
+    const studentName = activeStudent
+      ? (activeStudent.nickname || 'Student')
+      : (activeTeacher ? activeTeacher.name : 'Student');
 
     const viewport = document.getElementById('mouse-interactive-viewport');
     if (viewport) {
       viewport.innerHTML = `
-        <div class="quiz-results-banner" style="margin: 0 auto; max-width: 580px; text-align: center; padding: 2.5rem 1.5rem;">
-          <div style="font-size: 3.5rem; margin-bottom: 0.5rem; animation: bounce 0.8s infinite alternate;">🎉 🏆 🌟</div>
-          <h2 style="font-size: 2rem; font-weight: 800; color: #1e3a8a; margin-bottom: 0.5rem;">
-            Congratulations, ${studentName}!
-          </h2>
-          <p style="font-size: 1.15rem; color: #059669; font-weight: 700; margin-bottom: 0.75rem;">
-            You have successfully completed all mouse practice exercises!
-          </p>
-          <p style="color: var(--text-muted); font-size: 1rem; margin-bottom: 1.75rem;">
+        <div class="quiz-results-banner">
+          <div class="results-icon-celebration">🎉 🏆 🌟</div>
+          <h2>Congratulations, ${studentName}!</h2>
+          <p class="results-lead">You have successfully completed all mouse practice exercises!</p>
+          <p class="results-sub">
             Great job building your digital mouse skills. You are now ready for everyday computer tasks!
           </p>
-          <div style="display: flex; gap: 0.75rem; justify-content: center;">
-            <button class="btn-primary" style="padding: 0.85rem 1.8rem; font-weight: 800; font-size: 1rem;" onclick="App.renderModulesList()">
+          <div class="results-actions">
+            <button class="btn-primary" onclick="MouseTrainer.exitLab()">
               <span>← Back to Curriculum</span>
             </button>
           </div>
