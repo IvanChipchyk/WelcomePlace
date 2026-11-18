@@ -86,6 +86,13 @@
   - **Right Click, Drag & Drop, Text Select та Scroll Wheel:** контекстне скло-меню з гарячими клавішами (`.menu-shortcut`), плавний Pointer-перетяг з клоном-привидом (`.drag-ghost-clone`) у парі з HTML5 Drag & Drop і SVG-геометрією для Shape Sorter, рамка текстового редактора (`.doc-editor-frame`) і жива шкала прокрутки (`.scroll-progress-rail` / `.scroll-progress-fill`).
 - [x] **Верифікація (`index.html`, Node Checks & VM Integration):** кеш-бастери оновлено до `?v=3.3.0`; усі 6 CSS-модулів перевірено (`< 900` рядків), синтаксис `js/*.js` чистий (`node --check`), тест пальців/регістру пройдено (`ALL TESTS PASSED!`, 16 символів), а VM-інтеграція підтвердила всі 6 треків MouseTrainer, SVG-руки/серії TypingTrainer, `Fullscreen` / `Escape` та `activeStudent === null`.
 
+---
+
+## Чекпойнт 11. Прибирання дублюючого блоку `Presentations & Classroom Media Library` з головної сторінки
+- [x] **Очищення головної сторінки модулів (`js/app.js`):** у методі `App.renderModulesList()` видалено дублюючий блок `Presentations & Classroom Media Library` (`mediaHubHtml`, включно з окремим гостьовим викликом `.locked-media-callout`), оскільки презентація, відео, документи та гід викладача вже доступні у вкладках усередині самого уроку (`renderLessonView()` / `📂 Files & Media`).
+- [x] **Кеш і верифікація (`index.html`, Node Checks & VM):** версію кешу піднято до `?v=3.3.1`; `node --check js/app.js` та VM-тест підтвердили відсутність дублюючого блоку на головній сторінці (для авторизованих користувачів і гостей) та збереження всіх вкладок усередині модуля (`🖼️ Presentation`, `📂 Files & Media`, `🧑‍🏫 Teacher Guide`).
+
+
 
 
 

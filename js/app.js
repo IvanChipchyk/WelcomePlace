@@ -757,103 +757,6 @@ const App = {
       `;
     }
 
-    // Build Media & Presentations Library section ONLY for authenticated users
-    let mediaHubHtml = '';
-    if (isAuth && MODULES_DATA.length > 0) {
-      const mod = MODULES_DATA[0];
-      const materials = mod.studentMaterials || [];
-      const teacherExclusiveDoc = (isTeacher && mod.teacherNotes && mod.teacherNotes.teacherExclusiveDoc)
-        ? mod.teacherNotes.teacherExclusiveDoc
-        : null;
-
-      mediaHubHtml = `
-        <div class="section-title-wrap">
-          <h2 class="section-title">
-            <span>📂</span>
-            <span>Presentations & Classroom Media Library</span>
-          </h2>
-          <span class="section-meta">
-            ${isTeacher ? 'Student materials + Teacher-Exclusive Lesson Script' : 'Unlocked for signed-in users'}
-          </span>
-        </div>
-
-        <div class="media-files-grid">
-          ${materials.map(item => `
-            <div class="media-file-card">
-              <div class="media-file-top">
-                <div class="media-file-icon">${item.icon}</div>
-                <span class="media-file-badge">${item.badge}</span>
-              </div>
-              <h3 class="media-file-title">${item.title}</h3>
-              <p class="media-file-desc">${item.description}</p>
-              <div class="media-file-meta">📦 Size: ${item.size}</div>
-              <div class="media-file-actions">
-                <button
-                  type="button"
-                  class="btn-primary-sm"
-                  onclick="App.openModule('${mod.id}', '${item.previewTab || 'presentation'}', '${item.previewMode || 'deck'}')"
-                >
-                  <span>👁️ Open in App</span>
-                </button>
-                <a
-                  href="${item.file}"
-                  download
-                  class="btn-secondary"
-                >
-                  <span>📥 Download</span>
-                </a>
-              </div>
-            </div>
-          `).join('')}
-
-          ${teacherExclusiveDoc ? `
-            <div class="media-file-card teacher-exclusive-card">
-              <div class="media-file-top">
-                <div class="media-file-icon">🔒</div>
-                <span class="media-file-badge">${teacherExclusiveDoc.badge}</span>
-              </div>
-              <h3 class="media-file-title">${teacherExclusiveDoc.title}</h3>
-              <p class="media-file-desc">
-                Full 75–90 min verbatim instructor script (Blocks 1–5), Say-Show-Do methodology, Color-Dot technique, and MS Paint offline drills. Visible only to signed-in Teachers.
-              </p>
-              <div class="media-file-meta">📦 Size: ${teacherExclusiveDoc.size} • Teacher Only</div>
-              <div class="media-file-actions">
-                <button
-                  type="button"
-                  class="btn-primary-sm"
-                  onclick="App.openModule('${mod.id}', 'teacher_notes')"
-                >
-                  <span>🧑‍🏫 View Teacher Guide</span>
-                </button>
-                <a
-                  href="${teacherExclusiveDoc.file}"
-                  download
-                  class="btn-secondary"
-                >
-                  <span>📥 Download .DOCX</span>
-                </a>
-              </div>
-            </div>
-          ` : ''}
-        </div>
-      `;
-    } else if (!isAuth) {
-      mediaHubHtml = `
-        <div class="locked-media-callout">
-          <div class="module-icon-large">🔐</div>
-          <div>
-            <h3>Presentations, PDFs & Video Files Are Protected</h3>
-            <p>
-              Sign in with your Student or Teacher account to view interactive slide presentations, download the 15-page Visual Primer PDF, watch the lesson video, and practice in the labs.
-            </p>
-          </div>
-          <button type="button" class="btn-primary-sm" onclick="App.openStudentLoginModal()">
-            <span>🔑 Sign In Now</span>
-          </button>
-        </div>
-      `;
-    }
-
     let html = `
       <!-- Welcome Hero -->
       ${heroHtml}
@@ -959,7 +862,7 @@ const App = {
       `;
     });
 
-    html += `</div>${mediaHubHtml}`;
+    html += `</div>`;
     container.innerHTML = html;
   },
 
