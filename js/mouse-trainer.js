@@ -31,15 +31,26 @@ const MouseTrainer = {
   // Level State
   targetClicksNeeded: 5,
   currentClicks: 0,
+  combo: 0,
   selectedText: '',
   draggedItem: null,
+  activeDragState: null,
   doubleClickLastTime: 0,
   sequenceNextExpected: 1,
+  constellationNodes: [
+    { num: 1, x: 16, y: 66 },
+    { num: 2, x: 34, y: 26 },
+    { num: 3, x: 52, y: 70 },
+    { num: 4, x: 70, y: 28 },
+    { num: 5, x: 86, y: 62 }
+  ],
 
   // Track sequence & auto-advance timers
   skillOrder: ['CLICK_PRECISION', 'DOUBLE_CLICK', 'RIGHT_CLICK', 'DRAG_DROP', 'TEXT_SELECT', 'SCROLL_WHEEL'],
   autoAdvanceTimer: null,
   autoAdvanceInterval: null,
+  coinTimer: null,
+  rhythmTimer: null,
 
   skills: {
     CLICK_PRECISION: {
@@ -240,6 +251,146 @@ const MouseTrainer = {
       clearInterval(this.autoAdvanceInterval);
       this.autoAdvanceInterval = null;
     }
+    if (this.coinTimer) {
+      clearTimeout(this.coinTimer);
+      this.coinTimer = null;
+    }
+    if (this.rhythmTimer) {
+      clearTimeout(this.rhythmTimer);
+      this.rhythmTimer = null;
+    }
+    this.cleanupPointerDrag();
+  },
+
+  cleanupPointerDrag() {
+    if (this.activeDragState) {
+      if (this.activeDragState.ghost && this.activeDragState.ghost.parentNode) {
+        this.activeDragState.ghost.parentNode.removeChild(this.activeDragState.ghost);
+      }
+      if (this.activeDragState.moveHandler && typeof document !== 'undefined') {
+        document.removeEventListener('mousemove', this.activeDragState.moveHandler);
+        document.removeEventListener('mouseup', this.activeDragState.upHandler);
+      }
+      this.activeDragState = null;
+    }
+  },
+
+  spawnClickEffect(evt, label = '+100', color = '#059669') {
+    if (typeof document === 'undefined') return;
+    const fxLayer = document.getElementById('mouse-fx-layer');
+    const stage = document.getElementById('mouse-stage-container');
+    if (!fxLayer || !stage || !stage.getBoundingClientRect) return;
+
+    const rect = stage.getBoundingClientRect();
+    let x = rect.width / 2;
+    let y = rect.height / 2;
+    if (evt && typeof evt.clientX === 'number' && evt.clientX > 0) {
+      x = evt.clientX - rect.left;
+      y = evt.clientY - rect.top;
+    }
+
+    const ripple = document.createElement('div');
+    ripple.className = 'click-ripple-fx';
+    ripple.style.left = `${x}px`;
+    ripple.style.top = `${y}px`;
+    ripple.style.borderColor = color;
+    fxLayer.appendChild(ripple);
+
+    const popup = document.createElement('div');
+    popup.className = 'score-float-fx';
+    popup.style.left = `${x}px`;
+    popup.style.top = `${y - 8}px`;
+    popup.style.color = color;
+    popup.textContent = label;
+    fxLayer.appendChild(popup);
+
+    setTimeout(() => {
+      if (ripple.parentNode) ripple.parentNode.removeChild(ripple);
+      if (popup.parentNode) popup.parentNode.removeChild(popup);
+    }, 850);
+  },
+
+  awardScore(evt, customText = '') {
+    this.combo++;
+    const pts = 100 * Math.min(4, Math.max(1, this.combo));
+    this.score += pts;
+
+    const scoreEl = document.getElementById('mouse-lab-score');
+    const comboEl = document.getElementById('mouse-lab-combo');
+    if (scoreEl) scoreEl.innerHTML = `💎 Score: <strong>${this.score}</strong>`;
+    if (comboEl) {
+      comboEl.innerHTML = `🔥 Combo: <strong>x${this.combo}</strong>`;
+      comboEl.classList.toggle('combo-hot', this.combo >= 2);
+    }
+
+    const label = customText || (this.combo >= 2 ? `+${pts} 🔥x${this.combo}` : `+${pts}`);
+    this.spawnClickEffect(evt, label, this.combo >= 3 ? '#d97706' : '#059669');
+  },
+
+  resetCombo() {
+    this.combo = 0;
+    const comboEl = document.getElementById('mouse-lab-combo');
+    if (comboEl) {
+      comboEl.innerHTML = `🔥 Combo: <strong>x0</strong>`;
+      comboEl.classList.remove('combo-hot');
+    }
+  },
+
+  renderMouseGuideWidget() {
+    let leftCls = '';
+    let rightCls = '';
+    let wheelCls = '';
+    let label = 'Left Click';
+
+    switch (this.currentSkill) {
+      case 'CLICK_PRECISION':
+        leftCls = 'mg-btn-active-green';
+        label = '1× Left Click (Green)';
+        break;
+      case 'DOUBLE_CLICK':
+        leftCls = 'mg-btn-double-green';
+        label = '2× Fast Tap-Tap!';
+        break;
+      case 'RIGHT_CLICK':
+        rightCls = 'mg-btn-active-orange';
+        label = '1× Right Click (Orange)';
+        break;
+      case 'DRAG_DROP':
+        leftCls = 'mg-btn-active-green';
+        label = 'Hold Left + Drag';
+        break;
+      case 'TEXT_SELECT':
+        leftCls = 'mg-btn-active-green';
+        label = 'Hold Left + Highlight';
+        break;
+      case 'SCROLL_WHEEL':
+        wheelCls = 'mg-wheel-active';
+        label = 'Roll Center Wheel';
+        break;
+    }
+
+    return `
+      <div class="mouse-guide-hud" title="Visual Mouse Action Guide">
+        <svg class="mouse-guide-svg" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="40" height="56" rx="20" fill="#f8fafc" stroke="#94a3b8" stroke-width="2.5" />
+          <path d="M6 26 L6 22 A18 18 0 0 1 23 5 L23 26 Z" fill="#e2e8f0" class="${leftCls}" />
+          <path d="M25 5 A18 18 0 0 1 42 22 L42 26 L25 26 Z" fill="#e2e8f0" class="${rightCls}" />
+          <line x1="24" y1="5" x2="24" y2="26" stroke="#94a3b8" stroke-width="2" />
+          <line x1="6" y1="26" x2="42" y2="26" stroke="#cbd5e1" stroke-width="1.5" />
+          <rect x="20.5" y="10" width="7" height="13" rx="3.5" fill="#64748b" class="${wheelCls}" />
+        </svg>
+        <span class="mg-label">${label}</span>
+      </div>
+    `;
+  },
+
+  renderStageHud(introHtml) {
+    return `
+      <div class="stage-top-hud">
+        <p class="playground-intro-text">${introHtml}</p>
+        ${this.renderMouseGuideWidget()}
+      </div>
+    `;
   },
 
   replayLevel() {
@@ -490,6 +641,12 @@ const MouseTrainer = {
           <div class="mouse-stat-pill" id="mouse-lab-progress">
             🎯 Progress: <strong>${this.currentClicks} / ${level.targetCount}</strong>
           </div>
+          <div class="mouse-stat-pill" id="mouse-lab-score">
+            💎 Score: <strong>${this.score}</strong>
+          </div>
+          <div class="mouse-stat-pill ${this.combo >= 2 ? 'combo-hot' : ''}" id="mouse-lab-combo">
+            🔥 Combo: <strong>x${this.combo}</strong>
+          </div>
           <div class="mouse-stat-pill" id="mouse-lab-stars">
             ⭐ Stars: <strong>${this.stars}</strong>
           </div>
@@ -504,6 +661,7 @@ const MouseTrainer = {
         <!-- Interactive Studio Stage Area -->
         <div class="mouse-stage-card" id="mouse-stage-container">
           <canvas id="mouse-confetti-canvas" class="mouse-confetti-layer"></canvas>
+          <div id="mouse-fx-layer" class="mouse-fx-layer"></div>
           <div id="mouse-interactive-viewport" class="mouse-interactive-viewport">
             <!-- Dynamically populated based on active skill & level -->
           </div>
@@ -519,6 +677,7 @@ const MouseTrainer = {
     const viewport = document.getElementById('mouse-interactive-viewport');
     if (!viewport) return;
 
+    this.cleanupTimers();
     this.currentClicks = 0;
     this.sequenceNextExpected = 1;
 
@@ -545,40 +704,41 @@ const MouseTrainer = {
   },
 
   // --------------------------------------------------------------------------
-  // 1. CLICK PRECISION (Giant Balloons, Coin Chase, Numbers, Whack-a-Star)
+  // 1. CLICK PRECISION (Sky Balloons, Coin Chase, Constellation, Cosmic Stars)
   // --------------------------------------------------------------------------
   renderClickPrecision(container) {
     if (this.currentLevel === 0) {
-      // Level 1: Giant Balloons Pop
+      const balloons = [
+        { color: '#ef4444', label: '1', left: 9, top: 26, delay: '0s' },
+        { color: '#3b82f6', label: '2', left: 27, top: 44, delay: '0.35s' },
+        { color: '#10b981', label: '3', left: 46, top: 18, delay: '0.7s' },
+        { color: '#f59e0b', label: '4', left: 65, top: 46, delay: '1.05s' },
+        { color: '#8b5cf6', label: '5', left: 82, top: 24, delay: '1.4s' }
+      ];
       container.innerHTML = `
-        <div class="balloons-field" id="balloons-field">
-          <p class="playground-intro-text">🎈 Click each giant balloon to pop it with a confetti explosion!</p>
-          <div class="balloon-targets-row">
-            ${[
-              { color: '#ef4444', label: '1', emoji: '🎈' },
-              { color: '#3b82f6', label: '2', emoji: '🎈' },
-              { color: '#10b981', label: '3', emoji: '🎈' },
-              { color: '#f59e0b', label: '4', emoji: '🎈' },
-              { color: '#8b5cf6', label: '5', emoji: '🎈' }
-            ].map((b, i) => `
-              <div 
-                class="giant-balloon-target" 
+        <div class="stage-centered-panel">
+          ${this.renderStageHud('🎈 <strong>Sky Balloon Pop:</strong> Left-click each floating balloon to pop it!')}
+          <div class="sky-arena" id="balloons-field">
+            <span class="sky-cloud c1" aria-hidden="true">☁️</span>
+            <span class="sky-cloud c2" aria-hidden="true">☁️</span>
+            ${balloons.map((b, i) => `
+              <div
+                class="giant-balloon-target"
                 id="balloon-${i}"
-                style="background: radial-gradient(circle at 35% 30%, ${b.color}, #0f172a);"
-                onclick="MouseTrainer.popBalloon(${i})"
+                style="left: ${b.left}%; top: ${b.top}%; animation-delay: ${b.delay}; background: radial-gradient(circle at 35% 28%, ${b.color}, #0f172a);"
+                onclick="MouseTrainer.popBalloon(${i}, event)"
               >
                 <span class="balloon-num">${b.label}</span>
-                <span class="balloon-knot"></span>
+                <span class="balloon-string"></span>
               </div>
             `).join('')}
           </div>
         </div>
       `;
     } else if (this.currentLevel === 1) {
-      // Level 2: TechLit Coin Chase
       container.innerHTML = `
-        <div class="coin-chase-board" id="coin-chase-board">
-          <p class="playground-intro-text">🪙 <strong>Coin Chase:</strong> Click the shiny gold coin as it jumps around! (Collect 6 coins)</p>
+        <div class="stage-centered-panel" id="coin-chase-board">
+          ${this.renderStageHud('🪙 <strong>Coin Chase:</strong> Catch 6 gold coins before the timer ring runs out!')}
           <div id="coin-target-slot" class="coin-chase-arena">
             <!-- Dynamic Coin generated via spawnCoin() -->
           </div>
@@ -586,35 +746,34 @@ const MouseTrainer = {
       `;
       this.spawnCoin();
     } else if (this.currentLevel === 2) {
-      // Level 3: Number Sequence 1 to 5
-      const shuffled = [3, 1, 5, 2, 4];
       container.innerHTML = `
         <div class="stage-centered-panel">
-          <p class="playground-intro-text">🔢 Click numbers in exact ascending order: <strong>1 ➔ 2 ➔ 3 ➔ 4 ➔ 5</strong></p>
-          <div class="sequence-numbers-grid">
-            ${shuffled.map(num => `
-              <button 
-                class="sequence-num-btn" 
-                id="seq-btn-${num}"
-                onclick="MouseTrainer.clickSequenceNum(${num})"
+          ${this.renderStageHud('✨ <strong>Constellation Connect:</strong> Click stars in order: <strong>1 ➔ 2 ➔ 3 ➔ 4 ➔ 5</strong>')}
+          <div class="constellation-arena">
+            <svg class="constellation-svg" id="constellation-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+            ${this.constellationNodes.map(node => `
+              <button
+                class="sequence-num-btn star-node"
+                id="seq-btn-${node.num}"
+                style="left: ${node.x}%; top: ${node.y}%;"
+                onclick="MouseTrainer.clickSequenceNum(${node.num}, event)"
               >
-                ${num}
+                ${node.num}
               </button>
             `).join('')}
           </div>
           <div id="sequence-feedback" class="sequence-feedback-text">
-            Next expected: Click [1]
+            Next expected star: <strong>[1]</strong>
           </div>
         </div>
       `;
     } else {
-      // Level 4: Whack-a-Star
       container.innerHTML = `
         <div class="stage-centered-panel">
-          <p class="playground-intro-text">⭐ Click the giant glowing stars as they light up in the sky!</p>
+          ${this.renderStageHud('⭐ <strong>Cosmic Whack-a-Star:</strong> Click the glowing stars as they light up!')}
           <div class="whack-star-grid">
             ${[0, 1, 2, 3, 4, 5].map(idx => `
-              <div class="star-hole" id="star-hole-${idx}" onclick="MouseTrainer.clickStarHole(${idx})">
+              <div class="star-hole" id="star-hole-${idx}" onclick="MouseTrainer.clickStarHole(${idx}, event)">
                 <span class="star-icon" id="star-icon-${idx}">⭐</span>
               </div>
             `).join('')}
@@ -625,13 +784,14 @@ const MouseTrainer = {
     }
   },
 
-  popBalloon(index) {
+  popBalloon(index, evt) {
     const el = document.getElementById(`balloon-${index}`);
     if (!el || el.classList.contains('popped')) return;
 
     el.classList.add('popped');
     this.playSound('pop');
     this.triggerConfetti();
+    this.awardScore(evt);
     this.currentClicks++;
     this.updateProgressUI();
 
@@ -641,59 +801,109 @@ const MouseTrainer = {
   },
 
   spawnCoin() {
+    if (this.coinTimer) {
+      clearTimeout(this.coinTimer);
+      this.coinTimer = null;
+    }
     const slot = document.getElementById('coin-target-slot');
     if (!slot) return;
-    const maxX = slot.clientWidth - 90;
-    const maxY = slot.clientHeight - 90;
+    const width = slot.clientWidth || 640;
+    const height = slot.clientHeight || 350;
+    const maxX = Math.max(40, width - 105);
+    const maxY = Math.max(40, height - 105);
     const randX = Math.max(20, Math.floor(Math.random() * maxX));
     const randY = Math.max(20, Math.floor(Math.random() * maxY));
 
     slot.innerHTML = `
-      <div 
-        class="giant-gold-coin" 
+      <div
+        class="giant-gold-coin"
         style="top: ${randY}px; left: ${randX}px;"
-        onclick="MouseTrainer.collectCoin(this)"
+        onclick="MouseTrainer.collectCoin(this, event)"
       >
-        🪙
+        <svg class="coin-ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="coin-ring-arc" cx="50" cy="50" r="44"></circle>
+        </svg>
+        <span>🪙</span>
       </div>
     `;
+
+    this.coinTimer = setTimeout(() => {
+      if (this.currentSkill === 'CLICK_PRECISION' && this.currentLevel === 1 && this.currentClicks < 6) {
+        this.resetCombo();
+        this.spawnCoin();
+      }
+    }, 3200);
   },
 
-  collectCoin(coinEl) {
+  collectCoin(coinEl, evt) {
+    if (!coinEl || coinEl.classList.contains('coin-collected')) return;
+    if (this.coinTimer) {
+      clearTimeout(this.coinTimer);
+      this.coinTimer = null;
+    }
     this.playSound('coin');
     this.triggerConfetti();
+    this.awardScore(evt);
     coinEl.classList.add('coin-collected');
     this.currentClicks++;
     this.updateProgressUI();
 
     if (this.currentClicks >= 6) {
-      setTimeout(() => this.completeLevelSuccess(), 350);
+      this.coinTimer = setTimeout(() => this.completeLevelSuccess(), 350);
     } else {
-      setTimeout(() => this.spawnCoin(), 250);
+      this.coinTimer = setTimeout(() => this.spawnCoin(), 250);
     }
   },
 
-  clickSequenceNum(num) {
+  clickSequenceNum(num, evt) {
     const fb = document.getElementById('sequence-feedback');
     const btn = document.getElementById(`seq-btn-${num}`);
     if (num === this.sequenceNextExpected) {
       this.playSound('coin');
       if (btn) btn.classList.add('completed');
+
+      if (num > 1) {
+        const svg = document.getElementById('constellation-svg');
+        const prev = this.constellationNodes[num - 2];
+        const curr = this.constellationNodes[num - 1];
+        if (svg && prev && curr) {
+          if (typeof document.createElementNS === 'function') {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('class', 'constellation-line');
+            line.setAttribute('vector-effect', 'non-scaling-stroke');
+            line.setAttribute('x1', String(prev.x));
+            line.setAttribute('y1', String(prev.y));
+            line.setAttribute('x2', String(curr.x));
+            line.setAttribute('y2', String(curr.y));
+            svg.appendChild(line);
+          } else {
+            svg.innerHTML += `<line class="constellation-line" vector-effect="non-scaling-stroke" x1="${prev.x}" y1="${prev.y}" x2="${curr.x}" y2="${curr.y}" />`;
+          }
+        }
+      }
+
+      this.awardScore(evt);
       this.currentClicks++;
       this.sequenceNextExpected++;
       this.updateProgressUI();
 
       if (fb) {
         if (this.sequenceNextExpected <= 5) {
-          fb.innerHTML = `Great! Now click: <strong>[${this.sequenceNextExpected}]</strong>`;
+          fb.innerHTML = `Great! Next star: <strong>[${this.sequenceNextExpected}]</strong>`;
+        } else {
+          fb.innerHTML = `🌟 Constellation Linked!`;
         }
       }
 
       if (this.currentClicks >= 5) {
+        this.triggerConfetti();
         this.completeLevelSuccess();
       }
     } else {
+      this.mistakes++;
+      this.resetCombo();
       this.playSound('error');
+      this.spawnClickEffect(evt, 'Oops!', '#ef4444');
       if (btn) {
         btn.classList.add('shake-error');
         setTimeout(() => btn.classList.remove('shake-error'), 300);
@@ -711,11 +921,12 @@ const MouseTrainer = {
     if (targetHole) targetHole.classList.add('active');
   },
 
-  clickStarHole(idx) {
+  clickStarHole(idx, evt) {
     const hole = document.getElementById(`star-hole-${idx}`);
     if (hole && hole.classList.contains('active')) {
       this.playSound('coin');
       this.triggerConfetti();
+      this.awardScore(evt);
       hole.classList.remove('active');
       this.currentClicks++;
       this.updateProgressUI();
@@ -725,44 +936,48 @@ const MouseTrainer = {
       } else {
         setTimeout(() => this.activateRandomStar(), 250);
       }
+    } else {
+      this.mistakes++;
+      this.resetCombo();
+      this.playSound('error');
+      this.spawnClickEffect(evt, 'Miss!', '#ef4444');
     }
   },
 
   // --------------------------------------------------------------------------
-  // 2. DOUBLE CLICK (Treasure Chest, Landmark Photos, App Launcher, Gauge)
+  // 2. DOUBLE CLICK (Treasure Vault, Postcards, Mini-OS Desktop, SVG Gauge)
   // --------------------------------------------------------------------------
   renderDoubleClick(container) {
     if (this.currentLevel === 0) {
-      // Chest
       container.innerHTML = `
         <div class="stage-centered-panel">
-          <p class="playground-intro-text">🎁 <strong>Double-Click:</strong> Tap two times rapidly on the treasure chest to unlock it!</p>
-          <div class="interactive-chest-box" id="treasure-chest" ondblclick="MouseTrainer.handleChestDblClick(this)">
-            <div class="chest-emoji" id="chest-emoji">📦</div>
-            <div class="chest-title">LOCKED CHEST</div>
-            <div class="chest-sub">Double-click fast (under 450ms)!</div>
+          ${this.renderStageHud('🎁 <strong>Treasure Vault:</strong> Tap TWICE quickly (under 450ms) on the vault to unlock it!')}
+          <div class="interactive-chest-box" id="treasure-chest" onclick="MouseTrainer.handleChestFirstClick()" ondblclick="MouseTrainer.handleChestDblClick(this, event)">
+            <div class="chest-emoji" id="chest-emoji">🧰</div>
+            <div class="chest-title">LOCKED VAULT</div>
+            <div class="chest-sub">Double-click fast (beat the 450ms rhythm bar)!</div>
+            <div class="rhythm-bar-wrap"><div class="rhythm-bar-fill" id="rhythm-bar-fill"></div></div>
           </div>
-          <div id="chest-speed-meter" class="sequence-feedback-text"></div>
+          <div id="chest-speed-meter" class="sequence-feedback-text">Tap twice rapidly!</div>
         </div>
       `;
     } else if (this.currentLevel === 1) {
-      // Canadian Photos
       const photos = [
-        { id: 0, title: 'CN Tower, Toronto', emoji: '🏙️', desc: 'Famous Canadian landmark standing 553 meters tall in Ontario.' },
-        { id: 1, title: 'Banff National Park', emoji: '🏔️', desc: 'Turquoise glacial lakes and Rocky Mountains in Alberta.' },
-        { id: 2, title: 'Niagara Falls', emoji: '🌊', desc: 'Magnificent cascading waterfalls on the Ontario border.' }
+        { id: 0, title: 'CN Tower, Toronto', emoji: '🗼', bg: 'linear-gradient(135deg, #bae6fd, #60a5fa)', desc: 'Famous Canadian landmark standing 553 meters tall in Ontario.' },
+        { id: 1, title: 'Banff National Park', emoji: '🏔️', bg: 'linear-gradient(135deg, #a7f3d0, #38bdf8)', desc: 'Turquoise glacial lakes and Rocky Mountains in Alberta.' },
+        { id: 2, title: 'Niagara Falls', emoji: '🌊', bg: 'linear-gradient(135deg, #c7d2fe, #38bdf8)', desc: 'Magnificent cascading waterfalls on the Ontario border.' }
       ];
       container.innerHTML = `
         <div class="stage-centered-panel">
-          <p class="playground-intro-text">🖼️ Double-click each Canadian landmark photo card to inspect it in full view!</p>
+          ${this.renderStageHud('🖼️ <strong>Landmark Postcards:</strong> Double-click each Canadian postcard to inspect it!')}
           <div class="canada-photos-grid">
             ${photos.map(p => `
-              <div 
-                class="canada-photo-card" 
+              <div
+                class="canada-photo-card"
                 id="photo-card-${p.id}"
-                ondblclick="MouseTrainer.handlePhotoDblClick(${p.id}, '${p.title}', '${p.desc}', '${p.emoji}')"
+                ondblclick="MouseTrainer.handlePhotoDblClick(${p.id}, '${p.title}', '${p.desc}', '${p.emoji}', event)"
               >
-                <div class="photo-emoji">${p.emoji}</div>
+                <div class="postcard-art" style="background: ${p.bg};">${p.emoji}</div>
                 <div class="photo-title">${p.title}</div>
                 <div class="photo-tag">Double-click to open ➜</div>
               </div>
@@ -772,30 +987,49 @@ const MouseTrainer = {
         </div>
       `;
     } else if (this.currentLevel === 2) {
-      // App Launcher
       container.innerHTML = `
         <div class="stage-centered-panel">
-          <p class="playground-intro-text">💻 Double-click desktop application icons to launch your newcomer digital tools!</p>
-          <div class="desktop-apps-grid">
-            <div class="desktop-app-icon" ondblclick="MouseTrainer.launchDesktopApp('🍁 Canadian Citizenship Guide', 'Everything you need to know about rights and community.')">
-              <div class="app-icon-badge app-canada">🍁</div>
-              <div class="app-label">Canada Guide.app</div>
+          ${this.renderStageHud('💻 <strong>Mini-OS Desktop:</strong> Double-click both desktop icons to launch your newcomer tools!')}
+          <div class="mini-os-desktop">
+            <div class="desktop-apps-grid">
+              <div class="desktop-app-icon" id="desktop-app-canada" ondblclick="MouseTrainer.launchDesktopApp('canada', '🍁 Canadian Citizenship Guide', 'Everything you need to know about rights, voting, and community.', event)">
+                <div class="app-icon-badge app-canada">🍁</div>
+                <div class="app-label">Canada Guide.app</div>
+              </div>
+              <div class="desktop-app-icon" id="desktop-app-health" ondblclick="MouseTrainer.launchDesktopApp('health', '🩺 Provincial Health Card', 'Application portal for Ontario OHIP / Alberta AHCIP healthcare.', event)">
+                <div class="app-icon-badge app-health">🩺</div>
+                <div class="app-label">HealthCard.app</div>
+              </div>
             </div>
-            <div class="desktop-app-icon" ondblclick="MouseTrainer.launchDesktopApp('🩺 Provincial Health Card', 'Application portal for Ontario OHIP / Alberta AHCIP healthcare.')">
-              <div class="app-icon-badge app-health">🩺</div>
-              <div class="app-label">HealthCard.app</div>
+            <div id="desktop-window-slot" class="desktop-window-slot"></div>
+            <div class="mini-os-taskbar">
+              <span>🍁 WelcomeOS Desktop</span>
+              <span id="os-taskbar-status">0 / 2 apps running</span>
+              <span>Double-Click Launch</span>
             </div>
           </div>
-          <div id="desktop-window-slot" class="desktop-window-slot"></div>
         </div>
       `;
     } else {
-      // Speed Gauge
       container.innerHTML = `
         <div class="stage-centered-panel">
-          <p class="playground-intro-text">⏱️ <strong>Double-Click Speed Test:</strong> Click the target twice fast to measure your finger speed in milliseconds!</p>
-          <div class="speed-gauge-card" onclick="MouseTrainer.measureClickSpeed()">
-            <div class="speed-gauge-icon">⚡</div>
+          ${this.renderStageHud('⏱️ <strong>Speedometer Test:</strong> Click twice fast (< 450ms) to push the needle into the green zone!')}
+          <div class="speed-gauge-card" onclick="MouseTrainer.measureClickSpeed(event)">
+            <svg class="gauge-svg" viewBox="0 0 220 120" aria-hidden="true">
+              <defs>
+                <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#ef4444" />
+                  <stop offset="50%" stop-color="#f59e0b" />
+                  <stop offset="100%" stop-color="#10b981" />
+                </linearGradient>
+              </defs>
+              <path d="M 22 108 A 88 88 0 0 1 198 108" fill="none" stroke="#e2e8f0" stroke-width="14" stroke-linecap="round" />
+              <path d="M 22 108 A 88 88 0 0 1 198 108" fill="none" stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round" opacity="0.88" />
+              <g id="gauge-needle" class="gauge-needle" style="transform: rotate(-75deg);">
+                <line x1="110" y1="108" x2="110" y2="30" stroke="#1e3a8a" stroke-width="4" stroke-linecap="round" />
+                <circle cx="110" cy="108" r="8" fill="#1e3a8a" />
+              </g>
+            </svg>
             <div class="speed-gauge-cta">CLICK ME FAST (2×)</div>
             <div id="speed-result-display" class="speed-gauge-readout">Ready...</div>
             <div class="speed-gauge-target">Target: Under 450 ms</div>
@@ -805,23 +1039,50 @@ const MouseTrainer = {
     }
   },
 
-  handleChestDblClick(el) {
+  handleChestFirstClick() {
+    const chest = document.getElementById('treasure-chest');
+    if (!chest || chest.classList.contains('chest-opened')) return;
+    const fill = document.getElementById('rhythm-bar-fill');
+    const meter = document.getElementById('chest-speed-meter');
+    if (fill) {
+      fill.classList.remove('active');
+      void fill.offsetWidth;
+      fill.classList.add('active');
+    }
+    if (meter) meter.textContent = '1st tap! Tap again before the bar empties!';
+    if (this.rhythmTimer) clearTimeout(this.rhythmTimer);
+    this.rhythmTimer = setTimeout(() => {
+      if (fill) fill.classList.remove('active');
+    }, 450);
+  },
+
+  handleChestDblClick(el, evt) {
+    if (!el || el.classList.contains('chest-opened')) return;
+    if (this.rhythmTimer) {
+      clearTimeout(this.rhythmTimer);
+      this.rhythmTimer = null;
+    }
     this.playSound('success');
     this.triggerConfetti();
+    this.awardScore(evt, '💎 Vault Open!');
     el.classList.add('chest-opened');
-    document.getElementById('chest-emoji').textContent = '💎 🌟 🎁';
+    const emojiEl = document.getElementById('chest-emoji');
+    if (emojiEl) emojiEl.textContent = '💎 🌟 🎁';
     el.innerHTML += `<div class="chest-unlocked-badge">UNLOCKED! 100 Jewels!</div>`;
+    const meter = document.getElementById('chest-speed-meter');
+    if (meter) meter.innerHTML = `<span style="color: #10b981;">⚡ Great double-click rhythm!</span>`;
     this.currentClicks++;
     this.updateProgressUI();
     setTimeout(() => this.completeLevelSuccess(), 700);
   },
 
-  handlePhotoDblClick(id, title, desc, emoji) {
+  handlePhotoDblClick(id, title, desc, emoji, evt) {
     const card = document.getElementById(`photo-card-${id}`);
-    if (card.classList.contains('opened')) return;
+    if (!card || card.classList.contains('opened')) return;
     card.classList.add('opened');
     this.playSound('coin');
     this.triggerConfetti();
+    this.awardScore(evt);
 
     const preview = document.getElementById('photo-preview-slot');
     if (preview) {
@@ -840,7 +1101,10 @@ const MouseTrainer = {
     }
   },
 
-  launchDesktopApp(title, desc) {
+  launchDesktopApp(appKey, title, desc, evt) {
+    const iconEl = document.getElementById(`desktop-app-${appKey}`);
+    const alreadyLaunched = iconEl && iconEl.dataset && iconEl.dataset.launched === '1';
+
     this.playSound('success');
     this.triggerConfetti();
     const winSlot = document.getElementById('desktop-window-slot');
@@ -848,8 +1112,13 @@ const MouseTrainer = {
       winSlot.innerHTML = `
         <div class="virtual-window">
           <div class="virtual-window-header">
+            <span class="os-dots">
+              <span class="os-dot r"></span>
+              <span class="os-dot y"></span>
+              <span class="os-dot g"></span>
+            </span>
             <span>💻 ${title}</span>
-            <span class="virtual-window-meta">[Active Window]</span>
+            <span class="virtual-window-meta">[Active]</span>
           </div>
           <div class="virtual-window-body">
             <p class="virtual-window-desc">${desc}</p>
@@ -860,25 +1129,37 @@ const MouseTrainer = {
         </div>
       `;
     }
-    this.currentClicks++;
-    this.updateProgressUI();
-    if (this.currentClicks >= 2) {
-      setTimeout(() => this.completeLevelSuccess(), 800);
+
+    if (!alreadyLaunched) {
+      if (iconEl && iconEl.dataset) iconEl.dataset.launched = '1';
+      this.awardScore(evt);
+      this.currentClicks++;
+      this.updateProgressUI();
+      const statusEl = document.getElementById('os-taskbar-status');
+      if (statusEl) statusEl.textContent = `${this.currentClicks} / 2 apps running`;
+      if (this.currentClicks >= 2) {
+        setTimeout(() => this.completeLevelSuccess(), 800);
+      }
     }
   },
 
-  measureClickSpeed() {
+  measureClickSpeed(evt) {
     const now = Date.now();
     const display = document.getElementById('speed-result-display');
+    const needle = document.getElementById('gauge-needle');
     if (!this.doubleClickLastTime || (now - this.doubleClickLastTime > 1200)) {
       this.doubleClickLastTime = now;
-      if (display) display.textContent = '1st click! Click again!';
+      if (needle) needle.style.transform = 'rotate(-15deg)';
+      if (display) display.textContent = '1st click! Click again fast!';
     } else {
       const diff = now - this.doubleClickLastTime;
       this.doubleClickLastTime = 0;
       if (diff <= 450) {
+        const angle = Math.round(Math.max(22, Math.min(78, 82 - (diff / 450) * 58)));
+        if (needle) needle.style.transform = `rotate(${angle}deg)`;
         this.playSound('success');
         this.triggerConfetti();
+        this.awardScore(evt, `⚡ ${diff}ms`);
         if (display) display.innerHTML = `<span style="color: #10b981;">⚡ ${diff} ms (SUPER FAST!)</span>`;
         this.currentClicks++;
         this.updateProgressUI();
@@ -886,14 +1167,18 @@ const MouseTrainer = {
           setTimeout(() => this.completeLevelSuccess(), 800);
         }
       } else {
+        if (needle) needle.style.transform = 'rotate(-62deg)';
+        this.mistakes++;
+        this.resetCombo();
         this.playSound('error');
+        this.spawnClickEffect(evt, `${diff}ms 🐢`, '#f59e0b');
         if (display) display.innerHTML = `<span style="color: #f59e0b;">🐢 ${diff} ms (Too slow, aim under 450ms)</span>`;
       }
     }
   },
 
   // --------------------------------------------------------------------------
-  // 3. RIGHT CLICK (Context Menus, Color Palette, File Renaming, Inspector)
+  // 3. RIGHT CLICK (Frosted Glass Context Menu, Color Palette, Rename, Inspect)
   // --------------------------------------------------------------------------
   renderRightClick(container) {
     let icon = '🎨';
@@ -920,9 +1205,7 @@ const MouseTrainer = {
 
     container.innerHTML = `
       <div class="stage-centered-panel">
-        <p class="playground-intro-text">
-          🖱️ <strong>Right Click Practice:</strong> Click with the right mouse button (or 2-finger trackpad tap) to open the context menu!
-        </p>
+        ${this.renderStageHud('🖱️ <strong>Right Click Practice:</strong> Right-click (or 2-finger trackpad tap) to open the menu!')}
 
         <div class="right-click-zone" id="rc-target-zone" oncontextmenu="MouseTrainer.openContextMenu(event)">
           <div class="rc-target-icon" id="rc-target-icon">${icon}</div>
@@ -934,7 +1217,7 @@ const MouseTrainer = {
           </p>
         </div>
 
-        <!-- Custom Context Menu Container -->
+        <!-- Frosted Glass Context Menu -->
         <div id="mouse-custom-menu" class="mouse-custom-menu" style="display: none;"></div>
       </div>
     `;
@@ -955,37 +1238,39 @@ const MouseTrainer = {
 
     this.playSound('pop');
     menu.style.display = 'block';
-    menu.style.top = `${e.clientY - 40}px`;
-    menu.style.left = `${e.clientX - 20}px`;
+    const cx = typeof e.clientX === 'number' ? e.clientX : 200;
+    const cy = typeof e.clientY === 'number' ? e.clientY : 200;
+    menu.style.top = `${Math.max(12, cy - 32)}px`;
+    menu.style.left = `${Math.max(12, cx - 12)}px`;
 
     if (this.currentLevel === 0) {
       menu.innerHTML = `
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('green')">🟢 Turn Emerald Green</div>
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('blue')">🔵 Turn Ocean Blue</div>
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('purple')">🟣 Turn Royal Purple</div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('green', event)"><span>🟢 Turn Emerald Green</span><span class="menu-shortcut">⌘G</span></div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('blue', event)"><span>🔵 Turn Ocean Blue</span><span class="menu-shortcut">⌘B</span></div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('purple', event)"><span>🟣 Turn Royal Purple</span><span class="menu-shortcut">⌘P</span></div>
       `;
     } else if (this.currentLevel === 1) {
       menu.innerHTML = `
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('open')">📂 Open File</div>
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('rename')">✏️ Rename Document</div>
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('delete')">🗑️ Move to Trash</div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('open', event)"><span>📂 Open File</span><span class="menu-shortcut">⌘O</span></div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('rename', event)"><span>✏️ Rename Document</span><span class="menu-shortcut">⌘R</span></div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('delete', event)"><span>🗑️ Move to Trash</span><span class="menu-shortcut">⌫</span></div>
       `;
     } else if (this.currentLevel === 2) {
       menu.innerHTML = `
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('copy')">📋 Copy Image</div>
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('inspect')">🔍 Inspect Properties</div>
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('save')">💾 Save Image As...</div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('copy', event)"><span>📋 Copy Image</span><span class="menu-shortcut">⌘C</span></div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('inspect', event)"><span>🔍 Inspect Properties</span><span class="menu-shortcut">⌘I</span></div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('save', event)"><span>💾 Save Image As...</span><span class="menu-shortcut">⌘S</span></div>
       `;
     } else {
       menu.innerHTML = `
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('copy_cert')">📋 Copy to Clipboard</div>
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('print')">🖨️ Print Certificate</div>
-        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('share')">🔗 Share Online</div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('copy_cert', event)"><span>📋 Copy to Clipboard</span><span class="menu-shortcut">⌘C</span></div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('print', event)"><span>🖨️ Print Certificate</span><span class="menu-shortcut">⌘P</span></div>
+        <div class="custom-menu-item" onclick="MouseTrainer.handleContextAction('share', event)"><span>🔗 Share Online</span><span class="menu-shortcut">⇧⌘S</span></div>
       `;
     }
   },
 
-  handleContextAction(action) {
+  handleContextAction(action, evt) {
     const menu = document.getElementById('mouse-custom-menu');
     if (menu) menu.style.display = 'none';
 
@@ -1001,6 +1286,7 @@ const MouseTrainer = {
     if (isCorrect) {
       this.playSound('success');
       this.triggerConfetti();
+      this.awardScore(evt);
 
       if (zone) {
         zone.classList.add('rc-action-success');
@@ -1026,10 +1312,12 @@ const MouseTrainer = {
       this.currentClicks++;
       this.updateProgressUI();
 
-      // Immediately complete level and switch to next exercise!
       setTimeout(() => this.completeLevelSuccess(), 600);
     } else {
+      this.mistakes++;
+      this.resetCombo();
       this.playSound('error');
+      this.spawnClickEffect(evt, 'Wrong option', '#ef4444');
       if (heading) {
         const prevText = heading.innerHTML;
         heading.innerHTML = `<span style="color: #ef4444;">⚠️ Not quite! Right-click again and select the requested action.</span>`;
@@ -1043,24 +1331,23 @@ const MouseTrainer = {
   },
 
   // --------------------------------------------------------------------------
-  // 4. DRAG AND DROP (TechLit Apple Picker, Shape Sorter, Backpack, Trash)
+  // 4. DRAG AND DROP (Orchard Apples, SVG Shape Sorter, Backpack, Recycle Bin)
   // --------------------------------------------------------------------------
   renderDragDrop(container) {
     if (this.currentLevel === 0) {
-      // TechLit Apple Picker
       container.innerHTML = `
         <div class="apple-picker-wrapper">
-          <p class="playground-intro-text">🍎 <strong>TechLit Apple Picker:</strong> Drag 4 red apples from the tree and drop them into the basket!</p>
+          ${this.renderStageHud('🍎 <strong>Orchard Apple Picker:</strong> Drag 4 ripe apples from the tree into the basket!')}
           <div class="apple-orchard-scene">
-            <!-- Tree -->
             <div class="apple-tree-canopy">
-              <div class="tree-leaves-crown">🌳 Apple Tree</div>
+              <div class="tree-leaves-crown">🌳 Fresh Apple Tree</div>
               <div class="apples-rack">
                 ${[1, 2, 3, 4].map(idx => `
-                  <div 
-                    class="picker-apple-draggable" 
-                    id="apple-${idx}" 
+                  <div
+                    class="picker-apple-draggable"
+                    id="apple-${idx}"
                     draggable="true"
+                    onmousedown="MouseTrainer.startPointerDrag(event, 'apple-${idx}', 'apple')"
                     ondragstart="MouseTrainer.onDragStart(event, 'apple-${idx}')"
                   >
                     🍎
@@ -1069,9 +1356,8 @@ const MouseTrainer = {
               </div>
             </div>
 
-            <!-- Basket Dropzone -->
-            <div 
-              class="wicker-basket-dropzone" 
+            <div
+              class="wicker-basket-dropzone"
               id="apple-basket-zone"
               ondragover="MouseTrainer.onDragOver(event)"
               ondragleave="MouseTrainer.onDragLeave(event)"
@@ -1086,26 +1372,46 @@ const MouseTrainer = {
         </div>
       `;
     } else if (this.currentLevel === 1) {
-      // Shape Sorter
       const shapes = [
-        { id: 'circle', name: 'Circle', emoji: '🔴', slot: '⭕' },
-        { id: 'square', name: 'Square', emoji: '🟦', slot: '🔲' },
-        { id: 'triangle', name: 'Triangle', emoji: '🔺', slot: '▲' },
-        { id: 'star', name: 'Star', emoji: '⭐', slot: '☆' }
+        {
+          id: 'circle',
+          name: 'Circle',
+          svg: '<svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="19" fill="#ef4444" stroke="#b91c1c" stroke-width="2.5"/></svg>',
+          ghost: '<svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="19" fill="none" stroke="#94a3b8" stroke-width="3" stroke-dasharray="5 4"/></svg>'
+        },
+        {
+          id: 'square',
+          name: 'Square',
+          svg: '<svg width="48" height="48" viewBox="0 0 48 48"><rect x="7" y="7" width="34" height="34" rx="6" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2.5"/></svg>',
+          ghost: '<svg width="48" height="48" viewBox="0 0 48 48"><rect x="7" y="7" width="34" height="34" rx="6" fill="none" stroke="#94a3b8" stroke-width="3" stroke-dasharray="5 4"/></svg>'
+        },
+        {
+          id: 'triangle',
+          name: 'Triangle',
+          svg: '<svg width="48" height="48" viewBox="0 0 48 48"><polygon points="24,6 43,40 5,40" fill="#10b981" stroke="#047857" stroke-width="2.5" stroke-linejoin="round"/></svg>',
+          ghost: '<svg width="48" height="48" viewBox="0 0 48 48"><polygon points="24,6 43,40 5,40" fill="none" stroke="#94a3b8" stroke-width="3" stroke-dasharray="5 4" stroke-linejoin="round"/></svg>'
+        },
+        {
+          id: 'star',
+          name: 'Star',
+          svg: '<svg width="48" height="48" viewBox="0 0 48 48"><polygon points="24,5 29.5,17.5 43,19 33,28.5 35.5,42 24,35 12.5,42 15,28.5 5,19 18.5,17.5" fill="#f59e0b" stroke="#b45309" stroke-width="2.2" stroke-linejoin="round"/></svg>',
+          ghost: '<svg width="48" height="48" viewBox="0 0 48 48"><polygon points="24,5 29.5,17.5 43,19 33,28.5 35.5,42 24,35 12.5,42 15,28.5 5,19 18.5,17.5" fill="none" stroke="#94a3b8" stroke-width="2.8" stroke-dasharray="5 4" stroke-linejoin="round"/></svg>'
+        }
       ];
       container.innerHTML = `
         <div class="stage-centered-panel">
-          <p class="playground-intro-text">🔺 Drag each colorful shape into its matching silhouette dropzone!</p>
+          ${this.renderStageHud('🔺 <strong>SVG Shape Sorter:</strong> Drag each geometric shape into its matching outline slot!')}
           <div class="shape-sorter-board">
             <div class="shapes-draggable-bank">
               ${shapes.map(s => `
-                <div 
-                  class="shape-draggable-item" 
-                  id="shape-${s.id}" 
+                <div
+                  class="shape-draggable-item"
+                  id="shape-${s.id}"
                   draggable="true"
+                  onmousedown="MouseTrainer.startPointerDrag(event, 'shape-${s.id}', '${s.id}')"
                   ondragstart="MouseTrainer.onDragStart(event, 'shape-${s.id}', '${s.id}')"
                 >
-                  <span class="shape-emoji-lg">${s.emoji}</span>
+                  <span>${s.svg}</span>
                   <span>${s.name}</span>
                 </div>
               `).join('')}
@@ -1113,13 +1419,15 @@ const MouseTrainer = {
 
             <div class="shapes-slots-bank">
               ${shapes.map(s => `
-                <div 
-                  class="shape-slot-dropzone" 
+                <div
+                  class="shape-slot-dropzone"
                   id="slot-${s.id}"
+                  data-expected-shape="${s.id}"
                   ondragover="MouseTrainer.onDragOver(event)"
+                  ondragleave="MouseTrainer.onDragLeave(event)"
                   ondrop="MouseTrainer.onShapeDrop(event, '${s.id}')"
                 >
-                  <span class="shape-slot-ghost">${s.slot}</span>
+                  <span>${s.ghost}</span>
                   <span class="shape-slot-label">${s.name} Slot</span>
                 </div>
               `).join('')}
@@ -1128,7 +1436,6 @@ const MouseTrainer = {
         </div>
       `;
     } else if (this.currentLevel === 2) {
-      // Canadian Backpack Packer
       const items = [
         { id: 'passport', name: 'Passport', emoji: '📘' },
         { id: 'maple', name: 'Maple Leaf Pin', emoji: '🍁' },
@@ -1137,14 +1444,15 @@ const MouseTrainer = {
       ];
       container.innerHTML = `
         <div class="stage-centered-panel">
-          <p class="playground-intro-text">🎒 Drag all 4 Canadian newcomer essentials into your travel backpack!</p>
+          ${this.renderStageHud('🎒 <strong>Canada Backpack Packer:</strong> Drag all 4 newcomer essentials into your backpack!')}
           <div class="backpack-scene-grid">
             <div class="backpack-items-shelf">
               ${items.map(it => `
-                <div 
-                  class="backpack-drag-item" 
-                  id="bp-item-${it.id}" 
+                <div
+                  class="backpack-drag-item"
+                  id="bp-item-${it.id}"
                   draggable="true"
+                  onmousedown="MouseTrainer.startPointerDrag(event, 'bp-item-${it.id}', 'backpack')"
                   ondragstart="MouseTrainer.onDragStart(event, 'bp-item-${it.id}')"
                 >
                   <span class="shape-emoji-lg">${it.emoji}</span>
@@ -1153,9 +1461,11 @@ const MouseTrainer = {
               `).join('')}
             </div>
 
-            <div 
+            <div
               class="backpack-dropzone"
+              id="backpack-drop-zone"
               ondragover="MouseTrainer.onDragOver(event)"
+              ondragleave="MouseTrainer.onDragLeave(event)"
               ondrop="MouseTrainer.onBackpackDrop(event)"
             >
               <div class="dropzone-icon-lg">🎒</div>
@@ -1166,26 +1476,27 @@ const MouseTrainer = {
         </div>
       `;
     } else {
-      // Recycle Bin
       container.innerHTML = `
         <div class="stage-centered-panel">
-          <p class="playground-intro-text">🗑️ Clean up the desktop by dragging the 3 junk spam files into the Recycle Bin!</p>
+          ${this.renderStageHud('🗑️ <strong>Desktop Cleanup:</strong> Drag the 3 junk spam files into the Recycle Bin!')}
           <div class="recycle-scene-grid">
             <div class="trash-files-rack">
-              <div class="trash-file-item" id="spam-1" draggable="true" ondragstart="MouseTrainer.onDragStart(event, 'spam-1')">
+              <div class="trash-file-item" id="spam-1" draggable="true" onmousedown="MouseTrainer.startPointerDrag(event, 'spam-1', 'recycle')" ondragstart="MouseTrainer.onDragStart(event, 'spam-1')">
                 📄 Junk_Ad_01.tmp
               </div>
-              <div class="trash-file-item" id="spam-2" draggable="true" ondragstart="MouseTrainer.onDragStart(event, 'spam-2')">
+              <div class="trash-file-item" id="spam-2" draggable="true" onmousedown="MouseTrainer.startPointerDrag(event, 'spam-2', 'recycle')" ondragstart="MouseTrainer.onDragStart(event, 'spam-2')">
                 📄 Unknown_Spam.exe
               </div>
-              <div class="trash-file-item" id="spam-3" draggable="true" ondragstart="MouseTrainer.onDragStart(event, 'spam-3')">
+              <div class="trash-file-item" id="spam-3" draggable="true" onmousedown="MouseTrainer.startPointerDrag(event, 'spam-3', 'recycle')" ondragstart="MouseTrainer.onDragStart(event, 'spam-3')">
                 📄 Old_Cache.log
               </div>
             </div>
 
-            <div 
+            <div
               class="recycle-bin-dropzone"
+              id="recycle-bin-zone"
               ondragover="MouseTrainer.onDragOver(event)"
+              ondragleave="MouseTrainer.onDragLeave(event)"
               ondrop="MouseTrainer.onRecycleDrop(event)"
             >
               <div class="dropzone-icon-lg">🗑️</div>
@@ -1198,31 +1509,109 @@ const MouseTrainer = {
     }
   },
 
+  startPointerDrag(e, elemId, dragKind = '') {
+    if (e && typeof e.button === 'number' && e.button !== 0) return;
+    if (typeof document === 'undefined' || !document.body) return;
+    if (e && e.preventDefault) e.preventDefault();
+
+    const srcEl = document.getElementById(elemId);
+    if (!srcEl || srcEl.style.display === 'none') return;
+
+    this.cleanupPointerDrag();
+    this.playSound('pop');
+
+    const ghost = document.createElement('div');
+    ghost.className = 'drag-ghost-clone';
+    ghost.innerHTML = srcEl.innerHTML;
+    ghost.style.left = `${e.clientX}px`;
+    ghost.style.top = `${e.clientY}px`;
+    document.body.appendChild(ghost);
+    srcEl.style.opacity = '0.35';
+
+    const hitTest = (cx, cy, selector) => {
+      const nodes = document.querySelectorAll(selector);
+      let hit = null;
+      nodes.forEach(node => {
+        node.classList.remove('drop-hover');
+        if (!node.getBoundingClientRect) return;
+        const r = node.getBoundingClientRect();
+        if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
+          hit = node;
+        }
+      });
+      return hit;
+    };
+
+    const targetSelector = this.currentLevel === 0
+      ? '#apple-basket-zone'
+      : this.currentLevel === 1
+        ? '.shape-slot-dropzone'
+        : this.currentLevel === 2
+          ? '#backpack-drop-zone'
+          : '#recycle-bin-zone';
+
+    const moveHandler = mv => {
+      ghost.style.left = `${mv.clientX}px`;
+      ghost.style.top = `${mv.clientY}px`;
+      const over = hitTest(mv.clientX, mv.clientY, targetSelector);
+      if (over) over.classList.add('drop-hover');
+    };
+
+    const upHandler = up => {
+      srcEl.style.opacity = '';
+      const droppedOn = hitTest(up.clientX, up.clientY, targetSelector);
+      this.cleanupPointerDrag();
+      if (!droppedOn) return;
+
+      if (this.currentLevel === 0) {
+        this.processAppleDrop(elemId, up);
+      } else if (this.currentLevel === 1) {
+        const expected = droppedOn.getAttribute ? droppedOn.getAttribute('data-expected-shape') : '';
+        this.processShapeDrop(elemId, dragKind, expected, droppedOn, up);
+      } else if (this.currentLevel === 2) {
+        this.processBackpackDrop(elemId, up);
+      } else {
+        this.processRecycleDrop(elemId, up);
+      }
+    };
+
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+    this.activeDragState = { elemId, dragKind, ghost, moveHandler, upHandler };
+  },
+
   onDragStart(e, elemId, shapeType = '') {
-    e.dataTransfer.setData('text/plain', elemId);
-    e.dataTransfer.setData('shapeType', shapeType);
+    if (e && e.dataTransfer) {
+      e.dataTransfer.setData('text/plain', elemId);
+      e.dataTransfer.setData('shapeType', shapeType);
+    }
     this.playSound('pop');
   },
 
   onDragOver(e) {
     e.preventDefault();
-    e.currentTarget.classList.add('drop-hover');
+    if (e.currentTarget && e.currentTarget.classList) e.currentTarget.classList.add('drop-hover');
   },
 
   onDragLeave(e) {
-    e.currentTarget.classList.remove('drop-hover');
+    if (e.currentTarget && e.currentTarget.classList) e.currentTarget.classList.remove('drop-hover');
   },
 
   onAppleDrop(e) {
     e.preventDefault();
-    e.currentTarget.classList.remove('drop-hover');
-    const id = e.dataTransfer.getData('text/plain');
+    if (e.currentTarget && e.currentTarget.classList) e.currentTarget.classList.remove('drop-hover');
+    const id = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+    this.processAppleDrop(id, e);
+  },
+
+  processAppleDrop(id, evt) {
     const apple = document.getElementById(id);
     if (apple && !apple.classList.contains('in-basket')) {
       apple.classList.add('in-basket');
       apple.style.display = 'none';
       this.playSound('coin');
       this.triggerConfetti();
+      this.awardScore(evt);
       this.currentClicks++;
       this.updateProgressUI();
 
@@ -1237,17 +1626,24 @@ const MouseTrainer = {
 
   onShapeDrop(e, expectedShape) {
     e.preventDefault();
-    e.currentTarget.classList.remove('drop-hover');
-    const droppedShape = e.dataTransfer.getData('shapeType');
-    const elemId = e.dataTransfer.getData('text/plain');
+    if (e.currentTarget && e.currentTarget.classList) e.currentTarget.classList.remove('drop-hover');
+    const droppedShape = e.dataTransfer ? e.dataTransfer.getData('shapeType') : '';
+    const elemId = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+    this.processShapeDrop(elemId, droppedShape, expectedShape, e.currentTarget, e);
+  },
 
+  processShapeDrop(elemId, droppedShape, expectedShape, targetEl, evt) {
+    if (targetEl && targetEl.classList && targetEl.classList.contains('slot-filled')) return;
     if (droppedShape === expectedShape) {
       this.playSound('coin');
       this.triggerConfetti();
+      this.awardScore(evt);
       const el = document.getElementById(elemId);
       if (el) el.style.display = 'none';
-      e.currentTarget.classList.add('slot-filled');
-      e.currentTarget.innerHTML = `<span style="font-size: 2rem;">✅</span><span style="font-weight: 800; color: #10b981;">Matched!</span>`;
+      if (targetEl) {
+        targetEl.classList.add('slot-filled');
+        targetEl.innerHTML = `<span style="font-size: 2rem;">✅</span><span style="font-weight: 800; color: #10b981;">Matched!</span>`;
+      }
       this.currentClicks++;
       this.updateProgressUI();
 
@@ -1255,20 +1651,28 @@ const MouseTrainer = {
         setTimeout(() => this.completeLevelSuccess(), 500);
       }
     } else {
+      this.mistakes++;
+      this.resetCombo();
       this.playSound('error');
+      this.spawnClickEffect(evt, 'Wrong slot!', '#ef4444');
     }
   },
 
   onBackpackDrop(e) {
     e.preventDefault();
-    e.currentTarget.classList.remove('drop-hover');
-    const id = e.dataTransfer.getData('text/plain');
+    if (e.currentTarget && e.currentTarget.classList) e.currentTarget.classList.remove('drop-hover');
+    const id = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+    this.processBackpackDrop(id, e);
+  },
+
+  processBackpackDrop(id, evt) {
     const item = document.getElementById(id);
     if (item && !item.classList.contains('packed')) {
       item.classList.add('packed');
       item.style.display = 'none';
       this.playSound('coin');
       this.triggerConfetti();
+      this.awardScore(evt);
       this.currentClicks++;
       this.updateProgressUI();
 
@@ -1283,14 +1687,19 @@ const MouseTrainer = {
 
   onRecycleDrop(e) {
     e.preventDefault();
-    e.currentTarget.classList.remove('drop-hover');
-    const id = e.dataTransfer.getData('text/plain');
+    if (e.currentTarget && e.currentTarget.classList) e.currentTarget.classList.remove('drop-hover');
+    const id = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+    this.processRecycleDrop(id, e);
+  },
+
+  processRecycleDrop(id, evt) {
     const item = document.getElementById(id);
     if (item && !item.classList.contains('deleted')) {
       item.classList.add('deleted');
       item.style.display = 'none';
       this.playSound('coin');
       this.triggerConfetti();
+      this.awardScore(evt);
       this.currentClicks++;
       this.updateProgressUI();
 
@@ -1304,7 +1713,7 @@ const MouseTrainer = {
   },
 
   // --------------------------------------------------------------------------
-  // 5. TEXT SELECTION & HIGHLIGHTING (TechLit Word Selector)
+  // 5. TEXT SELECTION & HIGHLIGHTING (Document Editor Word Selector)
   // --------------------------------------------------------------------------
   renderTextSelect(container) {
     let targetPhrase = 'Canada';
@@ -1325,14 +1734,17 @@ const MouseTrainer = {
     }
 
     container.innerHTML = `
-      <div class="text-selector-lab-board" onmouseup="MouseTrainer.checkTextSelection('${targetPhrase}')">
-        <p class="playground-intro-text">
-          ✍️ <strong>TechLit Word Selector:</strong> Click and drag your cursor over the highlighted target:
-          <span class="target-phrase-badge">${targetPhrase}</span>
-        </p>
+      <div class="text-selector-lab-board" onmouseup="MouseTrainer.checkTextSelection('${targetPhrase}', event)">
+        ${this.renderStageHud(`✍️ <strong>Word Selector:</strong> Drag across exact target <span class="target-phrase-badge">${targetPhrase}</span>`)}
 
-        <div class="selectable-text-box" id="selectable-box">
-          ${sampleParagraph}
+        <div class="doc-editor-frame">
+          <div class="doc-editor-toolbar">
+            <span>📄 Newcomer_Document.txt</span>
+            <span>Exact Text Highlight</span>
+          </div>
+          <div class="selectable-text-box" id="selectable-box">
+            ${sampleParagraph}
+          </div>
         </div>
 
         <div class="selection-feedback-strip">
@@ -1345,16 +1757,15 @@ const MouseTrainer = {
     `;
   },
 
-  checkTextSelection(target) {
-    const rawSelection = (typeof window !== 'undefined' && window.getSelection) 
-      ? window.getSelection().toString() 
+  checkTextSelection(target, evt) {
+    const rawSelection = (typeof window !== 'undefined' && window.getSelection)
+      ? window.getSelection().toString()
       : '';
     const displayEl = document.getElementById('active-selected-text');
     const statusEl = document.getElementById('selection-status-badge');
 
     if (!rawSelection) return;
 
-    // Show visible representation of selection with '␣' for leading and trailing spaces
     const formattedDisplay = rawSelection
       .replace(/^ +/, m => '␣'.repeat(m.length))
       .replace(/ +$/, m => '␣'.repeat(m.length));
@@ -1363,14 +1774,14 @@ const MouseTrainer = {
       displayEl.textContent = `"${formattedDisplay}"`;
     }
 
-    // Exact match: character-for-character identical with NO extra whitespace before or after
     const exactMatch = (rawSelection.toLowerCase() === target.toLowerCase());
 
     if (exactMatch) {
       this.playSound('success');
       this.triggerConfetti();
+      this.awardScore(evt, '✍️ 100% Exact!');
       if (statusEl) {
-        statusEl.innerHTML = `<span style="color: #10b981; font-weight: 800; font-size: 1.05rem;">🎉 EXCELLENT! Target word selected with 100% precision (no extra spaces)!</span>`;
+        statusEl.innerHTML = `<span style="color: #10b981; font-weight: 800; font-size: 1.05rem;">🎉 EXCELLENT! Target selected with 100% precision (no extra spaces)!</span>`;
       }
       this.currentClicks++;
       this.updateProgressUI();
@@ -1378,9 +1789,10 @@ const MouseTrainer = {
       return;
     }
 
-    // If trimmed string matches, user captured extra space before or after the word!
     const trimmed = rawSelection.trim();
     if (trimmed.toLowerCase() === target.toLowerCase()) {
+      this.mistakes++;
+      this.resetCombo();
       this.playSound('error');
       const hasLeadingSpace = rawSelection.startsWith(' ') || rawSelection.startsWith('\t');
       const hasTrailingSpace = rawSelection.endsWith(' ') || rawSelection.endsWith('\t');
@@ -1391,18 +1803,19 @@ const MouseTrainer = {
         }
       } else if (hasLeadingSpace) {
         if (statusEl) {
-          statusEl.innerHTML = `<span style="color: #ef4444; font-weight: 700;">⚠️ Extra leading space! Start highlighting directly on the first letter "${target[0]}".</span>`;
+          statusEl.innerHTML = `<span style="color: #ef4444; font-weight: 700;">⚠️ Extra leading space! Start highlighting directly on "${target[0]}".</span>`;
         }
       } else if (hasTrailingSpace) {
         if (statusEl) {
-          statusEl.innerHTML = `<span style="color: #ef4444; font-weight: 700;">⚠️ Extra trailing space! Stop your cursor directly on the last letter "${target[target.length - 1]}".</span>`;
+          statusEl.innerHTML = `<span style="color: #ef4444; font-weight: 700;">⚠️ Extra trailing space! Stop directly on "${target[target.length - 1]}".</span>`;
         }
       }
       return;
     }
 
-    // Check if target is inside selection with extra words or punctuation
     if (rawSelection.toLowerCase().includes(target.toLowerCase())) {
+      this.mistakes++;
+      this.resetCombo();
       this.playSound('error');
       if (statusEl) {
         statusEl.innerHTML = `<span style="color: #ef4444; font-weight: 700;">⚠️ Extra characters or words included. Highlight ONLY "${target}".</span>`;
@@ -1410,7 +1823,6 @@ const MouseTrainer = {
       return;
     }
 
-    // Partial selection or unrelated selection
     if (target.toLowerCase().includes(trimmed.toLowerCase()) && trimmed.length > 0) {
       if (statusEl) {
         statusEl.innerHTML = `<span style="color: #f59e0b; font-weight: 600;">Incomplete selection ("${trimmed}"). Highlight the full target: "${target}".</span>`;
@@ -1423,50 +1835,60 @@ const MouseTrainer = {
   },
 
   // --------------------------------------------------------------------------
-  // 6. SCROLL WHEEL (TechLit Scavenger Hunt & Long Pages)
+  // 6. SCROLL WHEEL (Scavenger Hunt, Receipt, Provinces, Terms + Progress Rail)
   // --------------------------------------------------------------------------
   renderScrollWheel(container) {
+    const railHtml = `
+      <div class="scroll-progress-rail" aria-hidden="true">
+        <div class="scroll-progress-fill" id="scroll-progress-fill"></div>
+      </div>
+    `;
+
     if (this.currentLevel === 0) {
-      // Maple Leaf Scavenger Hunt
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
-          <p class="playground-intro-text">🍁 <strong>Scavenger Hunt:</strong> Scroll down the Canadian forest trail to find the hidden Golden Maple Leaf!</p>
-          <div class="scroll-trail-box" id="scroll-box-trail">
-            <div class="trail-item">🌲 Pine Trees of Ontario</div>
-            <div class="trail-item">🦌 White-Tailed Deer Spot</div>
-            <div class="trail-item">🏕️ Algonquin Park Campsite</div>
-            <div class="trail-item">🦅 Bald Eagle Lookout Point</div>
-            <div class="trail-item">🛶 Canoe River Rapids</div>
-            <div class="trail-item">🦫 Beaver Dam on the Creek</div>
-            <div class="trail-secret-spot" onclick="MouseTrainer.clickSecretScrollTarget(this)">
-              <div style="font-size: 3rem;">🍁</div>
-              <div style="font-weight: 800; color: #b91c1c; font-size: 1.25rem;">YOU FOUND THE GOLDEN MAPLE LEAF!</div>
-              <div style="font-size: 0.88rem; color: #92400e;">Click to verify scroll achievement!</div>
+        <div class="stage-centered-panel">
+          ${this.renderStageHud('🍁 <strong>Scavenger Hunt:</strong> Scroll down the forest trail to find the Golden Maple Leaf!')}
+          <div class="scroll-scene-wrap">
+            ${railHtml}
+            <div class="scroll-trail-box" id="scroll-box-trail" onscroll="MouseTrainer.updateScrollProgress(this)">
+              <div class="trail-item">🌲 Pine Trees of Ontario</div>
+              <div class="trail-item">🦌 White-Tailed Deer Spot</div>
+              <div class="trail-item">🏕️ Algonquin Park Campsite</div>
+              <div class="trail-item">🦅 Bald Eagle Lookout Point</div>
+              <div class="trail-item">🛶 Canoe River Rapids</div>
+              <div class="trail-item">🦫 Beaver Dam on the Creek</div>
+              <div class="trail-item">🏔️ Rocky Mountain Foothills</div>
+              <div class="trail-secret-spot" onclick="MouseTrainer.clickSecretScrollTarget(this, event)">
+                <div style="font-size: 3rem;">🍁</div>
+                <div style="font-weight: 800; color: #b91c1c; font-size: 1.25rem;">YOU FOUND THE GOLDEN MAPLE LEAF!</div>
+                <div style="font-size: 0.88rem; color: #92400e;">Click to verify scroll achievement!</div>
+              </div>
+              <div class="trail-item">🌲 Deep Boreal Forest End</div>
             </div>
-            <div class="trail-item">🌲 Deep Boreal Forest End</div>
           </div>
         </div>
       `;
     } else if (this.currentLevel === 1) {
-      // Supermarket Receipt
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
-          <p class="playground-intro-text">🛒 Scroll through the long grocery store receipt to confirm Bread & Milk at the bottom!</p>
-          <div class="scroll-trail-box" id="scroll-box-receipt">
-            <div class="receipt-header">🛒 CANADIAN SUPERMARKET • RECEIPT</div>
-            ${['Apples (3lb) - $4.99', 'Oatmeal Cereal - $3.49', 'Eggs (Dozen) - $3.89', 'Cheddar Cheese - $5.99', 'Bananas - $1.89', 'Carrots (2lb) - $2.49', 'Orange Juice - $3.99', 'Rice (5kg) - $11.99', 'Olive Oil - $9.49'].map(it => `
-              <div class="receipt-item">${it}</div>
-            `).join('')}
-            <div class="receipt-action-box" onclick="MouseTrainer.clickSecretScrollTarget(this)">
-              <div style="font-size: 2rem;">🥛 🍞</div>
-              <div style="font-weight: 800; color: #1e3a8a;">[CONFIRM MILK & BREAD PURCHASE]</div>
-              <div style="font-size: 0.82rem; color: #3b82f6;">Click button to verify</div>
+        <div class="stage-centered-panel">
+          ${this.renderStageHud('🛒 <strong>Receipt Finder:</strong> Scroll through the grocery receipt to confirm Milk & Bread!')}
+          <div class="scroll-scene-wrap">
+            ${railHtml}
+            <div class="scroll-trail-box" id="scroll-box-receipt" onscroll="MouseTrainer.updateScrollProgress(this)">
+              <div class="receipt-header">🛒 CANADIAN SUPERMARKET • RECEIPT</div>
+              ${['Apples (3lb) - $4.99', 'Oatmeal Cereal - $3.49', 'Eggs (Dozen) - $3.89', 'Cheddar Cheese - $5.99', 'Bananas - $1.89', 'Carrots (2lb) - $2.49', 'Orange Juice - $3.99', 'Rice (5kg) - $11.99', 'Olive Oil - $9.49', 'Yogurt Tub - $4.29'].map(it => `
+                <div class="receipt-item">${it}</div>
+              `).join('')}
+              <div class="receipt-action-box" onclick="MouseTrainer.clickSecretScrollTarget(this, event)">
+                <div style="font-size: 2rem;">🥛 🍞</div>
+                <div style="font-weight: 800; color: #1e3a8a;">[CONFIRM MILK & BREAD PURCHASE]</div>
+                <div style="font-size: 0.82rem; color: #3b82f6;">Click button to verify</div>
+              </div>
             </div>
           </div>
         </div>
       `;
     } else if (this.currentLevel === 2) {
-      // Coast to Coast
       const provinces = [
         'Newfoundland & Labrador (St. John’s)',
         'Nova Scotia (Halifax)',
@@ -1480,45 +1902,61 @@ const MouseTrainer = {
         'British Columbia (Vancouver & Victoria)'
       ];
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
-          <p class="playground-intro-text">🇨🇦 Scroll across Canada from East to West and click Vancouver at the Pacific Ocean!</p>
-          <div class="scroll-trail-box" id="scroll-box-provinces">
-            ${provinces.map((prov, i) => `
-              <div class="province-row ${i === provinces.length - 1 ? 'province-goal' : ''}" ${i === provinces.length - 1 ? 'onclick="MouseTrainer.clickSecretScrollTarget(this)"' : ''}>
-                <span style="font-weight: 800;">${i + 1}. ${prov}</span>
-                ${i === provinces.length - 1 ? '<span class="click-goal-badge">CLICK PACIFIC GOAL! 🎯</span>' : '<span>➜</span>'}
-              </div>
-            `).join('')}
+        <div class="stage-centered-panel">
+          ${this.renderStageHud('🇨🇦 <strong>Coast-to-Coast:</strong> Scroll from East to West and click Vancouver at the Pacific Ocean!')}
+          <div class="scroll-scene-wrap">
+            ${railHtml}
+            <div class="scroll-trail-box" id="scroll-box-provinces" onscroll="MouseTrainer.updateScrollProgress(this)">
+              ${provinces.map((prov, i) => `
+                <div class="province-row ${i === provinces.length - 1 ? 'province-goal' : ''}" ${i === provinces.length - 1 ? 'onclick="MouseTrainer.clickSecretScrollTarget(this, event)"' : ''}>
+                  <span style="font-weight: 800;">${i + 1}. ${prov}</span>
+                  ${i === provinces.length - 1 ? '<span class="click-goal-badge">CLICK PACIFIC GOAL! 🎯</span>' : '<span>➜</span>'}
+                </div>
+              `).join('')}
+            </div>
           </div>
         </div>
       `;
     } else {
-      // Terms of Agreement
       container.innerHTML = `
-        <div style="text-align: center; width: 100%;">
-          <p class="playground-intro-text">📜 Scroll to the very bottom of the Newcomer Terms of Agreement to unlock the Agree button!</p>
-          <div class="scroll-trail-box" id="scroll-box-terms" onscroll="MouseTrainer.checkTermsScroll(this)">
-            <h4 style="margin-top: 0;">WelcomePlace Digital Literacy Code of Conduct</h4>
-            <p>1. Respect all learners, teachers, and community members in the digital classroom.</p>
-            <p>2. Keep your personal account passwords private to protect your learning progress.</p>
-            <p>3. Practice computer skills with dedication and patience.</p>
-            <p>4. Always log out when using public library computers in Canada.</p>
-            <p>5. Never click on suspicious email links or share your Social Insurance Number (SIN) unprompted.</p>
-            <p>6. Utilize official emergency numbers 911 and community help 211 safely.</p>
-            <div class="terms-unlock-box">
-              <button 
-                id="terms-agree-btn" 
-                class="btn-primary terms-agree-btn" 
-                disabled 
-                onclick="MouseTrainer.clickSecretScrollTarget(this)"
-              >
-                🔒 Scroll to Bottom to Unlock Agreement
-              </button>
+        <div class="stage-centered-panel">
+          ${this.renderStageHud('📜 <strong>Terms Agreement:</strong> Scroll to the bottom of the document to unlock the Agree button!')}
+          <div class="scroll-scene-wrap">
+            ${railHtml}
+            <div class="scroll-trail-box" id="scroll-box-terms" onscroll="MouseTrainer.updateScrollProgress(this); MouseTrainer.checkTermsScroll(this)">
+              <h4 style="margin-top: 0;">WelcomePlace Digital Literacy Code of Conduct</h4>
+              <p>1. Respect all learners, teachers, and community members in the digital classroom.</p>
+              <p>2. Keep your personal account passwords private to protect your learning progress.</p>
+              <p>3. Practice computer skills with dedication and patience every session.</p>
+              <p>4. Always log out completely when using public library computers in Canada.</p>
+              <p>5. Never click suspicious email links or share your Social Insurance Number (SIN) unprompted.</p>
+              <p>6. Utilize official emergency numbers 911 and community support helpline 211 safely.</p>
+              <p>7. Verify government portals end in .gc.ca or official provincial domains.</p>
+              <p>8. Take regular screen breaks and maintain comfortable posture while typing.</p>
+              <div class="terms-unlock-box">
+                <button
+                  id="terms-agree-btn"
+                  class="btn-primary terms-agree-btn"
+                  disabled
+                  onclick="MouseTrainer.clickSecretScrollTarget(this, event)"
+                >
+                  🔒 Scroll to Bottom to Unlock Agreement
+                </button>
+              </div>
             </div>
           </div>
         </div>
       `;
     }
+  },
+
+  updateScrollProgress(el) {
+    if (!el) return;
+    const fill = document.getElementById('scroll-progress-fill');
+    if (!fill) return;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    const pct = maxScroll > 0 ? Math.min(100, Math.round((el.scrollTop / maxScroll) * 100)) : 100;
+    fill.style.width = `${pct}%`;
   },
 
   checkTermsScroll(el) {
@@ -1533,9 +1971,10 @@ const MouseTrainer = {
     }
   },
 
-  clickSecretScrollTarget(el) {
+  clickSecretScrollTarget(el, evt) {
     this.playSound('success');
     this.triggerConfetti();
+    this.awardScore(evt, '📜 Scroll Complete!');
     if (el) el.classList.add('secret-found');
     this.currentClicks++;
     this.updateProgressUI();

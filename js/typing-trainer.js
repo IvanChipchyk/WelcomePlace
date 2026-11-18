@@ -18,6 +18,8 @@ const TypingTrainer = {
   currentIndex: 0,
   mistakes: 0,
   totalKeystrokes: 0,
+  streak: 0,
+  bestStreak: 0,
   startTime: null,
   timerInterval: null,
   elapsedSeconds: 0,
@@ -113,6 +115,8 @@ const TypingTrainer = {
     this.currentIndex = 0;
     this.mistakes = 0;
     this.totalKeystrokes = 0;
+    this.streak = 0;
+    this.bestStreak = 0;
     this.elapsedSeconds = 0;
     this.startTime = null;
     this.isFinished = false;
@@ -247,6 +251,42 @@ const TypingTrainer = {
     return map[lower] || 'Index Finger';
   },
 
+  getFingerDetails(char) {
+    const keyInfo = this.charToKeyCode(char);
+    const fingerName = this.getFingerName(char);
+    const codeMap = {
+      'Left Pinky': 'f-lp',
+      'Left Ring': 'f-lr',
+      'Left Middle': 'f-lm',
+      'Left Index': 'f-li',
+      'Left Index (Anchor •)': 'f-li',
+      'Thumbs (Space)': 'f-thumb',
+      'Right Index': 'f-ri',
+      'Right Index (Anchor •)': 'f-ri',
+      'Right Middle': 'f-rm',
+      'Right Ring': 'f-rr',
+      'Right Pinky': 'f-rp'
+    };
+    const fingerCode = codeMap[fingerName] || 'f-li';
+    const shiftFingerCode = keyInfo.needsShift ? (keyInfo.isRightHand ? 'f-lp' : 'f-rp') : null;
+    let action = '';
+    if (char === ' ') {
+      action = 'Press Spacebar with either thumb';
+    } else if (keyInfo.needsShift) {
+      const shiftSide = keyInfo.isRightHand ? 'Left Shift' : 'Right Shift';
+      action = `Hold ${shiftSide} + tap ${fingerName} for "${char}"`;
+    } else {
+      action = `Tap "${char}" with ${fingerName}`;
+    }
+    return {
+      fingerCode,
+      fingerName,
+      action,
+      needsShift: !!keyInfo.needsShift,
+      shiftFingerCode
+    };
+  },
+
 
   playKeySound(isError = false) {
     if (!this.soundEnabled) return;
@@ -303,6 +343,7 @@ const TypingTrainer = {
     const accEl = document.getElementById('typing-acc');
     const timeEl = document.getElementById('typing-time');
     const mistakesEl = document.getElementById('typing-mistakes');
+    const streakEl = document.getElementById('typing-streak');
     const progressEl = document.getElementById('typing-progress-bar');
 
     const accuracy = this.calculateAccuracy();
@@ -311,6 +352,10 @@ const TypingTrainer = {
     if (wpmEl) wpmEl.textContent = `${wpm} WPM`;
     if (accEl) accEl.textContent = `${accuracy}% Acc`;
     if (mistakesEl) mistakesEl.textContent = `❌ ${this.mistakes} errors`;
+    if (streakEl) {
+      streakEl.textContent = `🔥 ${this.streak} Streak`;
+      streakEl.classList.toggle('streak-hot', this.streak >= 5);
+    }
     if (timeEl) {
       const m = Math.floor(this.elapsedSeconds / 60);
       const s = this.elapsedSeconds % 60;
@@ -375,6 +420,8 @@ const TypingTrainer = {
       // Correct!
       this.playKeySound(false);
       this.currentIndex++;
+      this.streak++;
+      if (this.streak > this.bestStreak) this.bestStreak = this.streak;
       this.renderPromptText();
       this.updateActiveKeyHighlight();
       this.updateStatsUI();
@@ -385,6 +432,7 @@ const TypingTrainer = {
     } else {
       // Mistake
       this.mistakes++;
+      this.streak = 0;
       this.playKeySound(true);
       this.flashWrongKey(e.code);
       this.updateStatsUI();
@@ -582,9 +630,10 @@ const TypingTrainer = {
           <div class="stat-pill" id="typing-wpm">0 WPM</div>
           <div class="stat-pill" id="typing-acc">100% Acc</div>
           <div class="stat-pill" id="typing-mistakes">❌ 0 errors</div>
+          <div class="stat-pill" id="typing-streak">🔥 0 Streak</div>
           <div class="stat-pill" id="typing-time">⏱️ 0:00</div>
           <div class="typing-finger-hint" id="typing-finger-hint">
-            <span>🖐️ Next Finger:</span>
+            <span>🖐️</span>
             <strong id="finger-name-display">-</strong>
           </div>
         </div>
@@ -603,9 +652,10 @@ const TypingTrainer = {
             </div>
           </div>
 
-          <!-- Virtual Keyboard Display -->
+          <!-- Virtual Keyboard + Animated SVG Hands Display -->
           <div class="virtual-keyboard-container">
             ${this.renderVirtualKeyboardHtml()}
+            ${this.renderHandsGuideHtml()}
           </div>
         </div>
       </div>
@@ -640,19 +690,23 @@ const TypingTrainer = {
   },
 
   updateActiveKeyHighlight() {
-    // 1. Remove keyboard highlights
+    // 1. Remove keyboard & hand highlights
     document.querySelectorAll('.v-key-target').forEach(el => el.classList.remove('v-key-target'));
     document.querySelectorAll('.v-key-shift-required').forEach(el => el.classList.remove('v-key-shift-required'));
+    document.querySelectorAll('.hand-finger').forEach(el => {
+      el.classList.remove('finger-active');
+      el.classList.remove('finger-shift-active');
+    });
 
     if (this.currentIndex >= this.targetText.length) return;
 
     const char = this.targetText[this.currentIndex];
-    const fingerName = this.getFingerName(char);
+    const details = this.getFingerDetails(char);
 
     // 2. Update top live metrics strip
     const fingerDisplay = document.getElementById('finger-name-display');
     if (fingerDisplay) {
-      fingerDisplay.textContent = fingerName;
+      fingerDisplay.textContent = details.action;
     }
 
     // 3. Highlight virtual keyboard target key & shift key if needed
@@ -666,6 +720,54 @@ const TypingTrainer = {
       const shiftEl = document.querySelector(`.v-key[data-code="${shiftCode}"]`);
       if (shiftEl) shiftEl.classList.add('v-key-shift-required');
     }
+
+    // 4. Illuminate active SVG finger(s) on Left & Right hands
+    document.querySelectorAll(`.hand-finger[data-finger="${details.fingerCode}"]`).forEach(el => {
+      el.classList.add('finger-active');
+    });
+    if (details.shiftFingerCode) {
+      document.querySelectorAll(`.hand-finger[data-finger="${details.shiftFingerCode}"]`).forEach(el => {
+        el.classList.add('finger-shift-active');
+      });
+    }
+  },
+
+  renderHandsGuideHtml() {
+    return `
+      <div class="hands-guide-stage" aria-hidden="true">
+        <svg class="hands-svg" viewBox="0 0 560 150" xmlns="http://www.w3.org/2000/svg">
+          <!-- LEFT HAND -->
+          <g id="svg-left-hand" transform="translate(20, 8)">
+            <rect class="hand-palm" x="52" y="76" width="118" height="58" rx="26" />
+            <!-- Left Pinky -->
+            <rect class="hand-finger f-lp" data-finger="f-lp" x="34" y="34" width="24" height="58" rx="12" />
+            <!-- Left Ring -->
+            <rect class="hand-finger f-lr" data-finger="f-lr" x="64" y="14" width="25" height="72" rx="12" />
+            <!-- Left Middle -->
+            <rect class="hand-finger f-lm" data-finger="f-lm" x="96" y="4" width="26" height="80" rx="13" />
+            <!-- Left Index -->
+            <rect class="hand-finger f-li" data-finger="f-li" x="129" y="16" width="26" height="70" rx="13" />
+            <!-- Left Thumb -->
+            <rect class="hand-finger f-thumb" data-finger="f-thumb" x="164" y="64" width="44" height="26" rx="13" transform="rotate(-24 186 77)" />
+          </g>
+
+          <!-- RIGHT HAND -->
+          <g id="svg-right-hand" transform="translate(300, 8)">
+            <rect class="hand-palm" x="70" y="76" width="118" height="58" rx="26" />
+            <!-- Right Thumb -->
+            <rect class="hand-finger f-thumb" data-finger="f-thumb" x="32" y="64" width="44" height="26" rx="13" transform="rotate(24 54 77)" />
+            <!-- Right Index -->
+            <rect class="hand-finger f-ri" data-finger="f-ri" x="85" y="16" width="26" height="70" rx="13" />
+            <!-- Right Middle -->
+            <rect class="hand-finger f-rm" data-finger="f-rm" x="118" y="4" width="26" height="80" rx="13" />
+            <!-- Right Ring -->
+            <rect class="hand-finger f-rr" data-finger="f-rr" x="151" y="14" width="25" height="72" rx="12" />
+            <!-- Right Pinky -->
+            <rect class="hand-finger f-rp" data-finger="f-rp" x="182" y="34" width="24" height="58" rx="12" />
+          </g>
+        </svg>
+      </div>
+    `;
   },
 
   charToKeyCode(char) {
@@ -707,11 +809,14 @@ const TypingTrainer = {
       '+': { code: 'Equal', needsShift: true, isRightHand: true },
       '\'': { code: 'Quote', needsShift: false, isRightHand: true },
       '"': { code: 'Quote', needsShift: true, isRightHand: true },
+      '!': { code: 'Digit1', needsShift: true, isRightHand: false },
       '@': { code: 'Digit2', needsShift: true, isRightHand: false },
       '#': { code: 'Digit3', needsShift: true, isRightHand: false },
       '$': { code: 'Digit4', needsShift: true, isRightHand: false },
       '%': { code: 'Digit5', needsShift: true, isRightHand: false },
+      '^': { code: 'Digit6', needsShift: true, isRightHand: true },
       '&': { code: 'Digit7', needsShift: true, isRightHand: true },
+      '*': { code: 'Digit8', needsShift: true, isRightHand: true },
       '(': { code: 'Digit9', needsShift: true, isRightHand: true },
       ')': { code: 'Digit0', needsShift: true, isRightHand: true }
     };

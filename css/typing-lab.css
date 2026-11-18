@@ -1,6 +1,6 @@
 /* ==========================================================================
-   WelcomePlace Canada - Keyboard Typing Studio (Stamina & Keybr Inspired)
-   Professional studio layout + fullscreen mode
+   WelcomePlace Canada - Keyboard Typing Studio (TypingClub / Monkeytype Style)
+   Gamified HUD, animated SVG hands overlay, tactile 3D keys & fullscreen mode
    ========================================================================== */
 
 .typing-lab-wrapper {
@@ -8,7 +8,7 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.05rem;
+  gap: 1rem;
 }
 
 .typing-lab-wrapper.lab-fullscreen-active {
@@ -19,11 +19,11 @@
   max-width: none;
   height: 100vh;
   margin: 0;
-  padding: 1.25rem 2.25rem 2rem;
+  padding: 1.15rem 2.25rem 1.75rem;
   overflow-y: auto;
   background:
-    radial-gradient(960px 420px at 85% 0%, rgba(30, 58, 138, 0.09), transparent 65%),
-    radial-gradient(760px 380px at 15% 100%, rgba(2, 132, 199, 0.06), transparent 65%),
+    radial-gradient(960px 440px at 85% 0%, rgba(14, 165, 233, 0.12), transparent 65%),
+    radial-gradient(760px 380px at 15% 100%, rgba(30, 58, 138, 0.08), transparent 65%),
     var(--bg-page);
 }
 
@@ -57,31 +57,24 @@
   transition: var(--transition);
 }
 
-.lesson-pill-btn:hover {
-  background: var(--surface-muted);
-  color: var(--text-main);
-}
+.lesson-pill-btn:hover { background: var(--surface-muted); color: var(--text-main); }
 
 .lesson-pill-btn.active {
-  background: var(--brand-blue);
+  background: linear-gradient(135deg, var(--navy-800), var(--brand-cyan));
   color: #ffffff;
-  box-shadow: 0 4px 10px -2px rgba(30, 58, 138, 0.35);
+  box-shadow: 0 4px 12px -2px rgba(2, 132, 199, 0.4);
 }
 
-.lesson-pill-num {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  opacity: 0.75;
-}
+.lesson-pill-num { font-family: var(--font-mono); font-size: 0.72rem; opacity: 0.8; }
 
 /* ---------- Live Telemetry HUD Strip ---------- */
 .typing-stats-bar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(120px, auto)) 1fr;
+  grid-template-columns: repeat(5, minmax(105px, auto)) 1fr;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   background: var(--bg-card);
-  padding: 0.75rem 1.15rem;
+  padding: 0.7rem 1.1rem;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-xs);
@@ -89,14 +82,27 @@
 
 .stat-pill {
   background: var(--surface-tint);
-  padding: 0.45rem 0.85rem;
+  padding: 0.42rem 0.8rem;
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   border: 1px solid var(--border-light);
   color: var(--text-main);
   text-align: center;
+}
+
+.stat-pill.streak-hot {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border-color: #f59e0b;
+  color: #b45309;
+  animation: streakPop 0.35s var(--ease);
+}
+
+@keyframes streakPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 .typing-finger-hint {
@@ -104,11 +110,11 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--brand-blue);
   background: var(--navy-50);
-  padding: 0.45rem 0.95rem;
+  padding: 0.44rem 0.95rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--navy-100);
 }
@@ -116,7 +122,7 @@
 /* ---------- Progress Track ---------- */
 .typing-progress-track {
   width: 100%;
-  height: 6px;
+  height: 7px;
   background: var(--surface-sunken);
   border-radius: var(--radius-full);
   overflow: hidden;
@@ -131,39 +137,39 @@
 
 /* ---------- Simulator Core Stage ---------- */
 .typing-simulator-card {
-  background: var(--bg-card);
+  background:
+    radial-gradient(600px 260px at 50% 0%, rgba(14, 165, 233, 0.05), transparent 70%),
+    var(--bg-card);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-md);
-  padding: 1.75rem 2rem;
+  padding: 1.5rem 1.85rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .lab-fullscreen-active .typing-simulator-card {
   flex: 1;
   justify-content: center;
-  padding: 2.25rem 2.75rem;
-  gap: 2rem;
+  padding: 1.85rem 2.5rem;
+  gap: 1.5rem;
 }
 
 .typing-prompt-wrapper {
-  background: linear-gradient(155deg, #0b1220 0%, var(--slate-900) 100%);
+  position: relative;
+  background: linear-gradient(155deg, #0b1220 0%, #162033 100%);
   border: 1px solid var(--slate-800);
   border-radius: var(--radius-lg);
-  padding: 1.75rem 2rem;
-  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.45), var(--shadow-sm);
-  min-height: 108px;
+  padding: 1.65rem 2rem;
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.5), 0 8px 24px -8px rgba(15, 23, 42, 0.35);
+  min-height: 104px;
   display: flex;
   align-items: center;
   transition: transform 0.12s ease, border-color 0.15s ease;
 }
 
-.lab-fullscreen-active .typing-prompt-wrapper {
-  padding: 2.25rem 2.5rem;
-  min-height: 132px;
-}
+.lab-fullscreen-active .typing-prompt-wrapper { padding: 2rem 2.5rem; min-height: 124px; }
 
 .prompt-shake-error {
   animation: shakePrompt 0.22s ease-in-out;
@@ -178,41 +184,39 @@
 
 .typing-prompt-inner {
   font-family: var(--font-mono);
-  font-size: 1.48rem;
+  font-size: 1.46rem;
   line-height: 1.9;
   letter-spacing: 0.04em;
   word-break: break-word;
 }
 
-.lab-fullscreen-active .typing-prompt-inner {
-  font-size: clamp(1.55rem, 2.2vw, 1.95rem);
-}
+.lab-fullscreen-active .typing-prompt-inner { font-size: clamp(1.55rem, 2.2vw, 1.95rem); }
 
 .t-char { transition: all 0.08s ease; }
-.t-char-correct { color: #34d399; }
+.t-char-correct { color: #34d399; text-shadow: 0 0 10px rgba(52, 211, 153, 0.25); }
 
 .t-char-current {
   color: #ffffff;
-  background: var(--brand-cyan);
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
   padding: 2px 6px;
   border-radius: 6px;
-  box-shadow: 0 0 14px rgba(2, 132, 199, 0.8);
-  animation: currentBlink 1s infinite alternate;
+  box-shadow: 0 0 16px rgba(14, 165, 233, 0.85);
+  animation: currentBlink 0.9s infinite alternate;
 }
 
 @keyframes currentBlink {
-  from { opacity: 1; }
-  to { opacity: 0.72; }
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0.78; transform: translateY(-1px); }
 }
 
 .t-char-pending { color: var(--slate-400); }
 
-/* ---------- Mechanical Virtual Keyboard ---------- */
+/* ---------- Mechanical Virtual Keyboard & Animated SVG Hands ---------- */
 .virtual-keyboard-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.15rem;
+  gap: 0.95rem;
   user-select: none;
 }
 
@@ -221,29 +225,25 @@
   flex-direction: column;
   gap: 8px;
   background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  padding: 18px 20px;
+  padding: 16px 20px;
   border-radius: var(--radius-xl);
   border: 1px solid var(--slate-700);
-  box-shadow: 0 20px 40px -14px rgba(15, 23, 42, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  box-shadow: 0 22px 42px -14px rgba(15, 23, 42, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   max-width: 100%;
   overflow-x: auto;
 }
 
-.v-keyboard-row {
-  display: flex;
-  gap: 7px;
-  justify-content: center;
-}
+.v-keyboard-row { display: flex; gap: 7px; justify-content: center; }
 
 .v-key {
-  height: 50px;
+  height: 48px;
   min-width: 48px;
-  padding: 0 9px;
-  background: linear-gradient(180deg, #334155 0%, #273449 100%);
+  padding: 0 8px;
+  background: linear-gradient(180deg, #334155 0%, #263347 100%);
   color: var(--slate-50);
   border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-bottom: 3.5px solid #020617;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 4px solid #020617;
   font-family: var(--font-sans);
   font-size: 0.82rem;
   font-weight: 700;
@@ -253,15 +253,11 @@
   text-align: center;
   line-height: 1.1;
   position: relative;
-  transition: all 0.08s ease;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.32);
+  transition: transform 0.07s ease, box-shadow 0.07s ease, background 0.12s ease;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.32);
 }
 
-.lab-fullscreen-active .v-key {
-  height: 56px;
-  min-width: 54px;
-  font-size: 0.9rem;
-}
+.lab-fullscreen-active .v-key { height: 54px; min-width: 54px; font-size: 0.88rem; }
 
 .v-key-wide-1-25 { min-width: 62px; }
 .v-key-wide-1-5  { min-width: 72px; }
@@ -270,24 +266,17 @@
 .v-key-wide-2-25 { min-width: 106px; }
 .v-key-wide-2-75 { min-width: 128px; }
 .v-key-spacebar  { min-width: 300px; flex-grow: 1; }
+.lab-fullscreen-active .v-key-spacebar { min-width: 350px; }
 
-.lab-fullscreen-active .v-key-spacebar { min-width: 360px; }
-
-.tactile-bump {
-  display: block;
-  font-size: 1.15rem;
-  color: #7dd3fc;
-  margin-top: -3px;
-  line-height: 0.5;
-}
+.tactile-bump { display: block; font-size: 1.15rem; color: #7dd3fc; margin-top: -3px; line-height: 0.5; }
 
 .v-key-target {
-  background: linear-gradient(180deg, #0ea5e9 0%, var(--brand-cyan) 100%) !important;
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important;
   color: #ffffff !important;
   border-bottom-color: #0369a1 !important;
-  box-shadow: 0 0 18px rgba(14, 165, 233, 0.85), 0 3px 6px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.85), 0 4px 8px rgba(0, 0, 0, 0.3) !important;
   transform: translateY(-2px);
-  animation: keyTargetPulse 1.2s infinite alternate;
+  animation: keyTargetPulse 1.1s infinite alternate;
 }
 
 @keyframes keyTargetPulse {
@@ -296,23 +285,19 @@
 }
 
 .v-key-shift-required {
-  background: linear-gradient(180deg, #f59e0b, #d97706) !important;
+  background: linear-gradient(180deg, #fbbf24, #d97706) !important;
   color: #ffffff !important;
   border-bottom-color: #92400e !important;
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.85) !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.85) !important;
 }
 
-.v-key-pressed {
-  transform: translateY(2px) !important;
-  border-bottom-width: 1px !important;
-  background: var(--slate-600) !important;
-}
+.v-key-pressed { transform: translateY(2px) !important; border-bottom-width: 1px !important; background: var(--slate-600) !important; }
 
 .v-key-wrong {
   background: var(--maple-600) !important;
   color: #ffffff !important;
   border-bottom-color: var(--maple-700) !important;
-  box-shadow: 0 0 14px rgba(225, 29, 72, 0.9) !important;
+  box-shadow: 0 0 16px rgba(225, 29, 72, 0.9) !important;
 }
 
 .f-lp { border-top: 3px solid #ec4899; }
@@ -325,12 +310,67 @@
 .f-rr { border-top: 3px solid #a855f7; }
 .f-rp { border-top: 3px solid #f43f5e; }
 
+/* ---------- Animated SVG Hands Guide ---------- */
+.hands-guide-stage {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.hands-svg {
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  filter: drop-shadow(0 6px 14px rgba(15, 23, 42, 0.08));
+}
+
+.hand-palm {
+  fill: #e2e8f0;
+  stroke: #cbd5e1;
+  stroke-width: 2;
+}
+
+.hand-finger {
+  fill: #f1f5f9;
+  stroke: #cbd5e1;
+  stroke-width: 2;
+  transition: all 0.18s var(--ease);
+  transform-box: fill-box;
+  transform-origin: bottom center;
+}
+
+.hand-finger.finger-active {
+  fill: #0ea5e9;
+  stroke: #0369a1;
+  filter: drop-shadow(0 0 10px rgba(14, 165, 233, 0.75));
+  transform: scale(1.06) translateY(-3px);
+}
+
+.hand-finger.finger-shift-active {
+  fill: #f59e0b;
+  stroke: #b45309;
+  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.75));
+  transform: scale(1.05) translateY(-2px);
+}
+
+.hand-tip-dot { fill: rgba(255, 255, 255, 0.75); opacity: 0; transition: opacity 0.15s ease; }
+.hand-finger.finger-active + .hand-tip-dot,
+.hand-tip-dot.active { opacity: 1; animation: tipRing 1s infinite alternate; }
+
+@keyframes tipRing {
+  from { transform: scale(0.9); opacity: 0.7; }
+  to { transform: scale(1.25); opacity: 1; }
+}
+
 .v-keyboard-legend {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
   flex-wrap: wrap;
   justify-content: center;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -338,12 +378,11 @@
 .legend-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   background: var(--surface-tint);
-  padding: 0.32rem 0.7rem;
+  padding: 0.28rem 0.65rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-xs);
 }
 
 .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -359,47 +398,19 @@
 .f-rp-bg { background: #f43f5e; }
 
 /* ---------- Completion Summary Grid ---------- */
-.typing-results-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
+.typing-results-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.typing-result-metric { background: var(--surface-tint); padding: 1.15rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); }
+.typing-result-label { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.25rem; }
+.typing-result-val { font-family: var(--font-display); font-size: 1.9rem; font-weight: 800; color: var(--brand-blue); }
+.results-score-badge.failed { background: var(--warning-bg); color: var(--warning); border: 2px solid var(--warning-border); }
 
-.typing-result-metric {
-  background: var(--surface-tint);
-  padding: 1.15rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-light);
-}
-
-.typing-result-label {
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-bottom: 0.25rem;
-}
-
-.typing-result-val {
-  font-family: var(--font-display);
-  font-size: 1.9rem;
-  font-weight: 800;
-  color: var(--brand-blue);
-}
-
-.results-score-badge.failed {
-  background: var(--warning-bg);
-  color: var(--warning);
-  border: 2px solid var(--warning-border);
-}
-
-@media (max-width: 900px) {
-  .typing-stats-bar { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 960px) {
+  .typing-stats-bar { grid-template-columns: repeat(3, 1fr); }
   .typing-finger-hint { grid-column: 1 / -1; justify-self: stretch; justify-content: center; }
 }
 
 @media (max-width: 640px) {
+  .typing-stats-bar { grid-template-columns: repeat(2, 1fr); }
   .typing-lab-wrapper.lab-fullscreen-active { padding: 0.85rem; }
   .typing-simulator-card { padding: 1.15rem; }
   .typing-prompt-inner { font-size: 1.15rem; }

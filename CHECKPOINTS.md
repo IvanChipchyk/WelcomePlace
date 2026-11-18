@@ -76,5 +76,16 @@
 - [x] **Оновлений дизайн Keyboard Typing Studio (`css/typing-lab.css`, `js/typing-trainer.js`):** оновлено 8-крокову панель уроків, 5-елементну панель телеметрії (`WPM`, `Acc`, `Errors`, `Time`, `Next Finger`), контрастний екран набору з видимим індикатором пробілу (`␣`) та рельєфну QWERTY-клавіатуру з тактильними маркерами `F`/`J` і масштабуванням у повноекранному режимі.
 - [x] **Безпека та очищення при виході (`js/app.js`, `index.html`):** додано захист від `activeStudent === null` при збереженні метрик викладачем, коректне скидання повноекранного режиму в `App.cleanupLabs()` і оновлено версію кешу до `?v=3.2.0`.
 
+---
+
+## Чекпойнт 10. Гейміфікація та інтерактивні анімації тренажерів (TypingClub / Monkeytype / TechLit стиль)
+- [x] **Анімовані SVG-руки та лічильник серій у Keyboard Typing Studio (`js/typing-trainer.js`, `css/typing-lab.css`):** додано інтерактивні SVG-кисті (`#svg-left-hand`, `#svg-right-hand`), що підсвічують потрібний палець (`.finger-active`) і мізинець протилежної руки для `Shift` (`.finger-shift-active`), розширено `symbolMap` (`!`, `^`, `*`), додано живий лічильник безпомилкових серій (`#typing-streak`) і рельєфні 3D-клавіші.
+- [x] **Аркадні ефекти, SVG Mouse Guide HUD та 24 інтерактивні 2D-сцени у Mouse Precision Studio (`js/mouse-trainer.js`, `css/mouse-lab.css`):**
+  - **Живі ефекти та HUD:** додано клік-хвилі (`.click-ripple-fx`), спливаючі бали/комбо (`.score-float-fx`), живий віджет підказки миші (`renderMouseGuideWidget()`) у верхньому HUD сцени (`renderStageHud()`), а також лічильники `💎 Score` і `🔥 Combo` на панелі телеметрії.
+  - **Click Precision та Double Click:** Sky Balloon Arena (`.sky-arena`, хмари `.sky-cloud`, кульки з нитками `.balloon-string`), Coin Chase зі звужуваним SVG-кільцем таймера (`.coin-ring-svg`), Constellation Connect з динамічними SVG-лазерами (`#constellation-svg`), Cosmic Whack-a-Star, Treasure Vault з 450ms смугою ритму (`.rhythm-bar-fill`), Polaroid-листівки канадських пам'яток (`.postcard-art`), Mini-OS Desktop з панеллю задач (`.mini-os-taskbar`) та віконними індикаторами (`.os-dots`), і 180° SVG-спідометр (`.gauge-svg`) з обертовою стрілкою (`#gauge-needle`).
+  - **Right Click, Drag & Drop, Text Select та Scroll Wheel:** контекстне скло-меню з гарячими клавішами (`.menu-shortcut`), плавний Pointer-перетяг з клоном-привидом (`.drag-ghost-clone`) у парі з HTML5 Drag & Drop і SVG-геометрією для Shape Sorter, рамка текстового редактора (`.doc-editor-frame`) і жива шкала прокрутки (`.scroll-progress-rail` / `.scroll-progress-fill`).
+- [x] **Верифікація (`index.html`, Node Checks & VM Integration):** кеш-бастери оновлено до `?v=3.3.0`; усі 6 CSS-модулів перевірено (`< 900` рядків), синтаксис `js/*.js` чистий (`node --check`), тест пальців/регістру пройдено (`ALL TESTS PASSED!`, 16 символів), а VM-інтеграція підтвердила всі 6 треків MouseTrainer, SVG-руки/серії TypingTrainer, `Fullscreen` / `Escape` та `activeStudent === null`.
+
+
 
 
