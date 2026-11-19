@@ -1,0 +1,305 @@
+/* ==========================================================================
+   WelcomePlace Canada - TypingClub Arcade Mini-Games Styles
+   Balloon Valley, Jungle Frog Jump, Falling Meteors & Orchard Defense
+   ========================================================================== */
+
+.tc-game-stage {
+  position: relative;
+  width: 100%;
+  height: 255px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 2px solid #cbd5e1;
+  box-shadow: inset 0 2px 14px rgba(15, 23, 42, 0.08);
+  user-select: none;
+}
+
+.lab-fullscreen-active .tc-game-stage { height: clamp(270px, 34vh, 360px); }
+
+.tc-game-hud {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.tc-hud-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.tc-hud-pill {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: var(--radius-full);
+  padding: 0.28rem 0.72rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0f172a;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.tc-hud-hearts { letter-spacing: 2px; font-size: 0.85rem; }
+.tc-hud-combo { background: #fef3c7; border-color: #fcd34d; color: #b45309; }
+
+.tc-game-shake { animation: gameStageShake 0.22s ease-in-out; }
+@keyframes gameStageShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.tc-game-fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.tc-game-pop {
+  position: absolute;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  color: #16a34a;
+  text-shadow: 0 2px 6px rgba(255, 255, 255, 0.95);
+  transform: translate(-50%, -50%);
+  animation: tcPopRise 0.75s ease-out forwards;
+  white-space: nowrap;
+}
+
+@keyframes tcPopRise {
+  from { transform: translate(-50%, -30%) scale(0.8); opacity: 1; }
+  to { transform: translate(-50%, -170%) scale(1.15); opacity: 0; }
+}
+
+/* Shared Target Word Pill Badges */
+.tc-word-chip {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.62rem;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  border: 2px solid #cbd5e1;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.14);
+}
+
+.tc-word-chip .wc-done { color: #16a34a; }
+.tc-word-chip .wc-next { color: #0284c7; text-decoration: underline; text-underline-offset: 3px; }
+.tc-word-chip.is-locked { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.35), 0 6px 14px rgba(14, 165, 233, 0.25); }
+
+/* ---------- Scene 1: Balloon Valley ---------- */
+.tc-scene-balloon {
+  background: linear-gradient(180deg, #7dd3fc 0%, #bae6fd 52%, #dcfce7 88%, #86efac 100%);
+  border-color: #38bdf8;
+}
+
+.tc-bg-cloud {
+  position: absolute;
+  font-size: 2.3rem;
+  opacity: 0.75;
+  pointer-events: none;
+  animation: tcCloudDrift 28s linear infinite;
+}
+
+.tc-bg-cloud.c1 { top: 18%; left: -12%; animation-duration: 24s; }
+.tc-bg-cloud.c2 { top: 42%; left: -18%; animation-duration: 34s; animation-delay: -10s; font-size: 2.9rem; }
+@keyframes tcCloudDrift { from { transform: translateX(0); } to { transform: translateX(120vw); } }
+
+.tc-balloon {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.12s ease;
+}
+
+.tc-balloon-bulb {
+  min-width: 58px;
+  height: 68px;
+  padding: 0 12px;
+  border-radius: 50% 50% 48% 48% / 42% 42% 58% 58%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  box-shadow: inset -6px -8px 14px rgba(0, 0, 0, 0.2), inset 6px 6px 12px rgba(255, 255, 255, 0.45), 0 8px 18px rgba(15, 23, 42, 0.2);
+}
+
+.tc-balloon.is-locked .tc-balloon-bulb {
+  box-shadow: 0 0 0 4px #ffffff, 0 0 20px rgba(2, 132, 199, 0.75);
+  transform: scale(1.1);
+}
+
+.tc-balloon-string { width: 2px; height: 22px; background: rgba(51, 65, 85, 0.45); }
+
+/* ---------- Scene 2: Jungle Frog Jump ---------- */
+.tc-scene-frog {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 35%, #0369a1 100%);
+  border-color: #0284c7;
+}
+
+.tc-river-shine {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(12deg, rgba(255, 255, 255, 0.06) 0 18px, transparent 18px 46px);
+  pointer-events: none;
+}
+
+.tc-frog-track {
+  position: absolute;
+  inset: 52px 24px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tc-lily-pad {
+  flex: 1;
+  max-width: 155px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.tc-lily-disc {
+  width: 78px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, #86efac, #16a34a 75%);
+  border: 2px solid #15803d;
+  box-shadow: 0 6px 0 rgba(20, 83, 45, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.tc-lily-pad.is-active-pad .tc-lily-disc {
+  box-shadow: 0 0 0 4px rgba(253, 224, 71, 0.85), 0 6px 0 rgba(20, 83, 45, 0.45);
+  transform: scale(1.08);
+}
+
+.tc-lily-pad.is-past-pad { opacity: 0.55; }
+
+.tc-frog-actor {
+  position: absolute;
+  top: -32px;
+  font-size: 2.35rem;
+  filter: drop-shadow(0 4px 6px rgba(15, 23, 42, 0.35));
+  animation: frogHopBob 0.7s infinite alternate ease-in-out;
+}
+
+@keyframes frogHopBob { from { transform: translateY(0); } to { transform: translateY(-7px); } }
+
+.tc-pad-timer-bar {
+  width: 68px;
+  height: 5px;
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.tc-pad-timer-fill { height: 100%; background: #fde047; transition: width 0.08s linear; }
+
+/* ---------- Scene 3: Falling Blocks / Meteors ---------- */
+.tc-scene-falling {
+  background: radial-gradient(circle at 50% 20%, #1e3a8a 0%, #0f172a 75%, #020617 100%);
+  border-color: #1e3a8a;
+}
+
+.tc-defense-shield {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 12px;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8, #0ea5e9);
+  box-shadow: 0 -2px 14px rgba(56, 189, 248, 0.75);
+}
+
+.tc-meteor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.tc-meteor-tail { font-size: 1.25rem; line-height: 0.9; filter: drop-shadow(0 0 8px #f59e0b); }
+
+/* ---------- Scene 4: Orchard Defense ---------- */
+.tc-scene-defense {
+  background: linear-gradient(180deg, #bae6fd 0%, #e0f2fe 36%, #dcfce7 38%, #bbf7d0 100%);
+  border-color: #22c55e;
+}
+
+.tc-orchard-base {
+  position: absolute;
+  left: 12px;
+  top: 52px;
+  bottom: 12px;
+  width: 68px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 2px dashed #16a34a;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 1.85rem;
+  z-index: 4;
+}
+
+.tc-enemy-unit {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.tc-enemy-sprite { font-size: 2rem; filter: drop-shadow(0 4px 6px rgba(15, 23, 42, 0.2)); }
+
+/* ---------- Game Over Friendly Banner ---------- */
+.tc-gameover-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.82);
+  color: #ffffff;
+  gap: 0.75rem;
+  padding: 1rem;
+  text-align: center;
+  position: relative;
+  z-index: 40;
+}
+
+.tc-gameover-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; margin: 0; }
+.tc-gameover-actions { display: flex; gap: 0.6rem; }

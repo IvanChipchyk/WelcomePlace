@@ -1,10 +1,7 @@
 /**
  * WelcomePlace - TypingClub-Style Interactive Keyboard Typing Studio
- * Inspired by TypingClub.com (Typing Jungle):
- *  - Clean white prompt canvas with green / yellow-corrected / sky-cursor / coral-error highlights
- *  - White sculpted QWERTY keyboard with translucent anatomical SVG hands overlaid & reaching per key
- *  - 20 progressive lessons grouped into 5 Units (Home Row F/J -> Top -> Bottom -> Shift/Canada -> Numbers)
- *  - Lesson Map with persistent 5-star ratings, WPM & Platinum badges + Teacher-safe StorageService metrics
+ * Combines TypingClub's clean UI, natural anatomical Bezier SVG hands,
+ * progressive Typing Jungle 20-lesson path, and embedded arcade games starting at Lesson 4.
  */
 
 const TypingTrainer = {
@@ -22,6 +19,7 @@ const TypingTrainer = {
   showHands: true,
   showKeyboard: true,
   viewMode: 'practice', // 'practice' | 'map'
+  mapFilter: 'all', // 'all' | 'games' | 'practice'
   charStatuses: [],
   currentHasError: false,
   audioCtx: null,
@@ -33,33 +31,36 @@ const TypingTrainer = {
   containerEl: null,
 
   lessons: [
-    // Unit 1: Home Row Foundations
+    // Unit 1: Home Row Foundations + Early Arcade Games (starting at Lesson 4!)
     {
       id: 'tc_01_fj',
+      type: 'practice',
       unit: 'Unit 1 • Home Row Foundations',
       title: '1. Meet F & J',
       badge: 'Intro',
       keysBadge: 'f  j',
       keysList: ['F', 'J'],
       targetWpm: 15,
-      description: 'Rest your index fingers on the tactile bumps on F and J',
-      fingerFocus: 'Index fingers stay anchored on F • and J • bumps',
+      description: 'Rest your index fingers gently on the tactile bumps on F and J',
+      fingerFocus: 'Index fingers stay anchored on F and J bumps',
       text: 'fff jjj fjf jfj ff jj fj jf ff jj fjf jfj'
     },
     {
       id: 'tc_02_fj_space',
+      type: 'practice',
       unit: 'Unit 1 • Home Row Foundations',
       title: '2. F, J & Spacebar',
       badge: 'Practice',
       keysBadge: 'f  j  ␣',
       keysList: ['F', 'J', 'Space'],
       targetWpm: 18,
-      description: 'Tap the spacebar lightly with your thumb between rhythms',
-      fingerFocus: 'Keep your eyes on the screen and use either thumb for Space',
+      description: 'Tap the spacebar lightly with your thumb between letter groups',
+      fingerFocus: 'Keep your eyes up and strike Space with your thumb',
       text: 'f j f j ff jj fj jf fff jjj fjf jfj fj jf'
     },
     {
       id: 'tc_03_dk',
+      type: 'practice',
       unit: 'Unit 1 • Home Row Foundations',
       title: '3. Add D & K',
       badge: 'Intro',
@@ -71,19 +72,23 @@ const TypingTrainer = {
       text: 'ddd kkk dkd kdk dd kk df jk fd kj df jk dk kd'
     },
     {
-      id: 'tc_04_review_fjdk',
+      id: 'tc_04_balloon_fjdk',
+      type: 'game_balloon',
       unit: 'Unit 1 • Home Row Foundations',
-      title: '4. Review: F J D K',
-      badge: 'Review',
-      keysBadge: 'f j d k',
-      keysList: ['D', 'F', 'J', 'K'],
+      title: '4. Balloon Valley: F J D K',
+      badge: '🎮 Game',
+      keysBadge: '🎈 f j d k',
+      keysList: ['F', 'J', 'D', 'K'],
       targetWpm: 20,
-      description: 'Build smooth alternating coordination across F, J, D, and K',
-      fingerFocus: 'Return gently to your home row resting keys',
-      text: 'df jk fd kj dfjk kjfd ffdd jjkk dfj kjd fjdk'
+      goal: 16,
+      pool: ['f', 'j', 'd', 'k', 'fj', 'dk', 'fd', 'jk', 'fjd', 'kdf'],
+      description: 'Pop 16 floating balloons by typing their letters before they float away!',
+      fingerFocus: 'Quick reflexes using your index & middle fingers',
+      text: ''
     },
     {
       id: 'tc_05_sl',
+      type: 'practice',
       unit: 'Unit 1 • Home Row Foundations',
       title: '5. Add S & L',
       badge: 'Intro',
@@ -92,22 +97,26 @@ const TypingTrainer = {
       targetWpm: 20,
       description: 'Train your ring fingers on S (left) and L (right)',
       fingerFocus: 'Left ring taps S, right ring taps L',
-      text: 'sss lll sls lsl ss ll sd kl ds lk asdf jkl; sdlk'
+      text: 'sss lll sls lsl ss ll sd kl ds lk sldk klds'
     },
     {
-      id: 'tc_06_review_sdfjkl',
+      id: 'tc_06_frog_sdfjkl',
+      type: 'game_frog',
       unit: 'Unit 1 • Home Row Foundations',
-      title: '6. Review: S D F J K L',
-      badge: 'Review',
-      keysBadge: 's d f j k l',
+      title: '6. Jungle Frog Jump: Home Row',
+      badge: '🎮 Game',
+      keysBadge: '🐸 s d f j k l',
       keysList: ['S', 'D', 'F', 'J', 'K', 'L'],
       targetWpm: 22,
-      description: 'Combine six home row keys in steady rhythmic patterns',
-      fingerFocus: 'Keep wrists relaxed and avoid looking down at your hands',
-      text: 'sdf jkl fds lkj sdlk lkjf dsf jlk fls kjd'
+      goal: 10,
+      pool: ['sad', 'lad', 'dad', 'all', 'ask', 'fall', 'flask', 'salad', 'skid', 'add'],
+      description: 'Type each lily-pad word quickly to hop your frog safely across the river!',
+      fingerFocus: 'Smooth rhythm keeps the frog jumping forward',
+      text: ''
     },
     {
       id: 'tc_07_a_semi',
+      type: 'practice',
       unit: 'Unit 1 • Home Row Foundations',
       title: '7. Add A & ;',
       badge: 'Intro',
@@ -115,137 +124,158 @@ const TypingTrainer = {
       keysList: ['A', ';'],
       targetWpm: 22,
       description: 'Activate your left and right pinky fingers on A and ;',
-      fingerFocus: 'Pinkies rest on A and Semicolon (;)',
+      fingerFocus: 'Pinkies rest lightly on A and Semicolon (;)',
       text: 'aaa ;;; a;a ;a; aa ;; asdf jkl; ;lkj fdsa ask all fall'
     },
     {
-      id: 'tc_08_home_mastery',
+      id: 'tc_08_falling_home',
+      type: 'game_falling',
       unit: 'Unit 1 • Home Row Foundations',
-      title: '8. Home Row Mastery',
-      badge: 'Practice',
-      keysBadge: 'a–;',
+      title: '8. Falling Meteors: Home Row',
+      badge: '🎮 Game',
+      keysBadge: '☄️ a–;',
       keysList: ['A', 'S', 'D', 'F', 'J', 'K', 'L', ';'],
       targetWpm: 24,
-      description: 'Type real words built strictly on the home row',
-      fingerFocus: 'Keep all eight fingers gently curved on home row',
-      text: 'as ask dad lad sad fall salad flask; a sad dad; all fall;'
+      goal: 16,
+      pool: ['a', 's', 'd', 'f', 'j', 'k', 'l', ';', 'as', 'df', 'jk', 'la', 'ask', 'dad', 'fall'],
+      description: 'Zap 16 falling meteors before they strike your sky shield!',
+      fingerFocus: 'Stay centered on the home row to intercept fast blocks',
+      text: ''
     },
     {
       id: 'tc_09_gh',
+      type: 'practice',
       unit: 'Unit 1 • Home Row Foundations',
       title: '9. Reach for G & H',
       badge: 'Intro',
       keysBadge: 'g  h',
       keysList: ['G', 'H'],
       targetWpm: 24,
-      description: 'Stretch your index fingers inward to hit G and H, then snap back',
-      fingerFocus: 'Left index F->G, right index J->H',
+      description: 'Stretch index fingers inward for G and H, then return to F and J',
+      fingerFocus: 'Left index reaches F -> G, right index reaches J -> H',
       text: 'fgf jhj fg hj gh hg glad half flag dash sash hash ash'
     },
     {
-      id: 'tc_10_home_sentences',
+      id: 'tc_10_defense_home',
+      type: 'game_defense',
       unit: 'Unit 1 • Home Row Foundations',
-      title: '10. Home Row Phrases',
-      badge: 'Speed',
-      keysBadge: 'a–; + gh',
+      title: '10. Orchard Defense: Home Words',
+      badge: '🎮 Game',
+      keysBadge: '🦝 a–; + g h',
       keysList: ['G', 'H', 'Home Row'],
       targetWpm: 25,
-      description: 'Boost speed and rhythm across the full home row',
-      fingerFocus: 'Light touches! Return index fingers to F and J anchors',
-      text: 'a lad had a glass; glad dads ask half a flask; ash falls'
+      goal: 12,
+      pool: ['glad', 'half', 'flag', 'dash', 'glass', 'flash', 'hall', 'salad', 'ask', 'ash'],
+      description: 'Protect the apple orchard by typing the words above approaching critters!',
+      fingerFocus: 'Lock onto the closest critter first and complete its word',
+      text: ''
     },
 
     // Unit 2: Top Row Reach
     {
       id: 'tc_11_ei',
+      type: 'practice',
       unit: 'Unit 2 • Top Row Reach',
       title: '11. Top Row E & I',
       badge: 'Intro',
       keysBadge: 'e  i',
       keysList: ['E', 'I'],
       targetWpm: 25,
-      description: 'Reach up with middle fingers from D->E and K->I',
-      fingerFocus: 'Middle fingers reach straight up to E and I',
+      description: 'Reach straight up with middle fingers from D -> E and K -> I',
+      fingerFocus: 'Left middle reaches E, right middle reaches I',
       text: 'ded kik de ki ei ie see side life file like desk sail'
     },
     {
-      id: 'tc_12_ru',
+      id: 'tc_12_balloon_top',
+      type: 'game_balloon',
       unit: 'Unit 2 • Top Row Reach',
-      title: '12. Top Row R & U',
-      badge: 'Intro',
-      keysBadge: 'r  u',
-      keysList: ['R', 'U'],
-      targetWpm: 25,
-      description: 'Reach up with index fingers from F->R and J->U',
-      fingerFocus: 'Index fingers reach upward to R and U',
-      text: 'frf juj fr ju ru ur fur sure rule user ride fire full'
+      title: '12. Sky Words: E I R U',
+      badge: '🎮 Game',
+      keysBadge: '🎈 e i r u',
+      keysList: ['E', 'I', 'R', 'U'],
+      targetWpm: 26,
+      goal: 14,
+      pool: ['see', 'side', 'life', 'like', 'fire', 'rule', 'sure', 'leaf', 'ride', 'desk', 'user', 'full'],
+      description: 'Pop 14 top-row word balloons gliding across the Canadian sky!',
+      fingerFocus: 'Reach up cleanly to E, I, R, U without lifting your palms',
+      text: ''
     },
     {
-      id: 'tc_13_ty',
+      id: 'tc_13_top_full',
+      type: 'practice',
       unit: 'Unit 2 • Top Row Reach',
-      title: '13. Inner Reach T & Y',
+      title: '13. Full Top Row (T Y Q W O P)',
       badge: 'Intro',
-      keysBadge: 't  y',
-      keysList: ['T', 'Y'],
+      keysBadge: 'q w t y o p',
+      keysList: ['Q', 'W', 'T', 'Y', 'O', 'P'],
       targetWpm: 26,
-      description: 'Stretch index fingers up and inward for T and Y',
-      fingerFocus: 'Left index reaches T, right index reaches Y',
-      text: 'ftf jyj ft jy ty yt try yet day stay city east they that'
+      description: 'Coordinate all upper-row letters for smooth everyday words',
+      fingerFocus: 'Outer fingers reach smoothly up for Q, W, O, P',
+      text: 'ftf jyj try stay city work word port power quick quiet help type'
     },
     {
-      id: 'tc_14_woqp',
+      id: 'tc_14_frog_top',
+      type: 'game_frog',
       unit: 'Unit 2 • Top Row Reach',
-      title: '14. Full Top Row (Q W O P)',
-      badge: 'Intro',
-      keysBadge: 'q w o p',
-      keysList: ['Q', 'W', 'O', 'P'],
-      targetWpm: 26,
-      description: 'Use ring and pinky fingers for Q, W, O, and P',
-      fingerFocus: 'Upper reaches for outer left and right fingers',
-      text: 'work word port power quick quiet help people step write type'
+      title: '14. River Sprint: Top Row',
+      badge: '🎮 Game',
+      keysBadge: '🐸 top row',
+      keysList: ['Top Row', 'Home Row'],
+      targetWpm: 27,
+      goal: 10,
+      pool: ['work', 'word', 'city', 'stay', 'open', 'help', 'step', 'type', 'write', 'power'],
+      description: 'Hop across 10 rapid lily pads using top & home row mastery!',
+      fingerFocus: 'Keep a steady cadence word after word',
+      text: ''
     },
 
     // Unit 3: Bottom Row Keys
     {
-      id: 'tc_15_cvbnm',
+      id: 'tc_15_bottom_row',
+      type: 'practice',
       unit: 'Unit 3 • Bottom Row Keys',
-      title: '15. Bottom Row (C V B N M)',
+      title: '15. Bottom Row (Z X C V B N M)',
       badge: 'Intro',
-      keysBadge: 'c v b n m',
-      keysList: ['C', 'V', 'B', 'N', 'M', ','],
-      targetWpm: 26,
-      description: 'Curved downward reaches to C, V, B, N, M, and Comma',
-      fingerFocus: 'Curl downward without moving your whole wrist',
-      text: 'can man van cab main calm name bank, come home, climb'
+      keysBadge: 'z x c v b n m',
+      keysList: ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '.'],
+      targetWpm: 27,
+      description: 'Curl your fingers gently downward to complete the full alphabet',
+      fingerFocus: 'Avoid shifting wrists downward — curl individual fingers cleanly',
+      text: 'can man van cab main calm name bank, zoom exact size box next.'
     },
     {
-      id: 'tc_16_xz_punct',
+      id: 'tc_16_falling_canada',
+      type: 'game_falling',
       unit: 'Unit 3 • Bottom Row Keys',
-      title: '16. X, Z, Period & Slash',
-      badge: 'Review',
-      keysBadge: 'z x . /',
-      keysList: ['Z', 'X', '.', '/'],
+      title: '16. Meteor Shower: Full Alphabet',
+      badge: '🎮 Game',
+      keysBadge: '☄️ a–z words',
+      keysList: ['Full Alphabet'],
       targetWpm: 28,
-      description: 'Complete the entire alphabet plus period and slash',
-      fingerFocus: 'Left pinky Z, left ring X, right ring period',
-      text: 'zoom exact size box prize fix. max next zone. zero exit.'
+      goal: 14,
+      pool: ['maple', 'cabin', 'canoe', 'north', 'river', 'park', 'home', 'bank', 'book', 'calm', 'zoom', 'winter'],
+      description: 'Defend Canada’s night sky by typing falling nature words!',
+      fingerFocus: 'All 10 fingers work together across top, home & bottom rows',
+      text: ''
     },
 
-    // Unit 4: Canadian Words & Shift Capitals
+    // Unit 4: Canadian Vocabulary & Shift Capitals
     {
       id: 'tc_17_canadian_words',
+      type: 'practice',
       unit: 'Unit 4 • Everyday Canada & Shift',
       title: '17. Everyday Canadian Words',
       badge: 'Practice',
-      keysBadge: 'a–z',
+      keysBadge: 'a–z flow',
       keysList: ['All Letters', 'Space'],
       targetWpm: 28,
-      description: 'Smooth flow typing common newcomer vocabulary',
-      fingerFocus: 'Keep a steady beat between words and spaces',
+      description: 'Build comfortable flow across essential newcomer vocabulary',
+      fingerFocus: 'Look ahead one word while your hands follow muscle memory',
       text: 'welcome canada hello please thank you library clinic school bus subway safe home'
     },
     {
       id: 'tc_18_shift_capitals',
+      type: 'practice',
       unit: 'Unit 4 • Everyday Canada & Shift',
       title: '18. Shift Key & Canadian Cities',
       badge: 'Shift',
@@ -253,43 +283,55 @@ const TypingTrainer = {
       keysList: ['Left Shift', 'Right Shift'],
       targetWpm: 28,
       description: 'Hold the opposite pinky on Shift to capitalize Canadian cities',
-      fingerFocus: 'Opposite Shift rule: Right Shift for left-hand letters, Left Shift for right-hand',
+      fingerFocus: 'Right Shift for left-hand capitals; Left Shift for right-hand capitals',
       text: 'Canada Ottawa Ontario Toronto Montreal Vancouver Calgary Edmonton English French'
     },
 
-    // Unit 5: Numbers & Digital Life
+    // Unit 5: Numbers, Hotlines & Arcade Boss Challenge
     {
-      id: 'tc_19_hotlines',
+      id: 'tc_19_defense_hotlines',
+      type: 'game_defense',
       unit: 'Unit 5 • Numbers & Digital Life',
-      title: '19. Numbers & Canadian Hotlines',
-      badge: 'Numbers',
-      keysBadge: '911 / 211',
-      keysList: ['1–9', '0', 'Period'],
-      targetWpm: 26,
-      description: 'Essential Canadian emergency and city support numbers',
-      fingerFocus: 'Reach smoothly to the top number row and back to home row',
-      text: 'Call 911 in emergency. Dial 211 for help. Call 311 for city services. 811 for health.'
+      title: '19. City Defenders: 911 & Cities',
+      badge: '🎮 Game',
+      keysBadge: '🏰 911 / ⇧',
+      keysList: ['Numbers', 'Shift'],
+      targetWpm: 28,
+      goal: 12,
+      pool: ['911', '211', '311', '811', 'Ottawa', 'Banff', 'Canada', 'Toronto', 'Health', 'Police'],
+      description: 'Use Shift & top number row to stop mischief critters at the gate!',
+      fingerFocus: 'Use opposite pinky Shift for capitals and reach cleanly to numbers',
+      text: ''
     },
     {
-      id: 'tc_20_postal_email',
+      id: 'tc_20_frog_express',
+      type: 'game_frog',
       unit: 'Unit 5 • Numbers & Digital Life',
-      title: '20. Postal Codes & Email',
-      badge: 'Mastery',
-      keysBadge: 'K1A 0B1',
-      keysList: ['Shift', 'Digits', '@'],
-      targetWpm: 28,
-      description: 'Canadian Letter-Number-Letter postal formats and web addresses',
-      fingerFocus: 'Coordinate Shift, digits, @ and dots with confidence',
-      text: 'K1A 0B1 M5V 2T6 T2P 1J9 V6B 2W9 info@welcomeplace.ca www.canada.ca'
+      title: '20. Trans-Canada Express',
+      badge: '🏆 Boss',
+      keysBadge: '🍁 K1A 0B1',
+      keysList: ['Shift', 'Digits', 'Canada'],
+      targetWpm: 30,
+      goal: 10,
+      pool: ['K1A', '0B1', 'M5V', '2T6', 'Ottawa', 'Toronto', 'Calgary', 'Halifax', 'Canada', 'Welcome'],
+      description: 'Cross the final river checkpoint typing Canadian postal codes and cities!',
+      fingerFocus: 'Master accuracy, Shift coordination, and steady WPM',
+      text: ''
     }
   ],
+
+  isGameLesson(lesson) {
+    return Boolean(lesson && typeof lesson.type === 'string' && lesson.type.startsWith('game_'));
+  },
 
   init(containerElement, lessonIdx = 0) {
     this.cleanup();
     const safeIdx = Math.max(0, Math.min(lessonIdx, this.lessons.length - 1));
+    const lesson = this.lessons[safeIdx];
+
     this.activeLessonIndex = safeIdx;
     this.viewMode = 'practice';
-    this.targetText = this.lessons[safeIdx].text;
+    this.targetText = this.isGameLesson(lesson) ? '' : (lesson.text || '');
     this.charStatuses = new Array(this.targetText.length).fill('pending');
     this.currentHasError = false;
     this.currentIndex = 0;
@@ -303,9 +345,48 @@ const TypingTrainer = {
 
     this.renderSimulator(containerElement);
     this.setupListeners();
+
+    if (this.isGameLesson(lesson) && typeof TypingGames !== 'undefined') {
+      const gameSlot = document.getElementById('typing-game-slot');
+      if (gameSlot) {
+        TypingGames.start(lesson, gameSlot, {
+          onTargetChanged: (nextCh) => this.highlightTargetChar(nextCh),
+          onKeyCorrect: (code, _ch, combo) => {
+            if (!this.startTime) this.startTimer();
+            this.totalKeystrokes++;
+            this.currentIndex++;
+            this.streak = combo;
+            if (combo > this.bestStreak) this.bestStreak = combo;
+            this.playKeySound(false);
+            this.highlightPhysicalKey(code, true);
+            setTimeout(() => this.highlightPhysicalKey(code, false), 140);
+            this.updateStatsUI();
+          },
+          onKeyWrong: (code) => {
+            if (!this.startTime) this.startTimer();
+            this.totalKeystrokes++;
+            this.mistakes++;
+            this.streak = 0;
+            this.playKeySound(true);
+            this.flashWrongKey(code);
+            this.updateStatsUI();
+          },
+          onWin: (gameStats) => this.finishLesson(gameStats),
+          onGameOver: () => {
+            if (this.timerInterval) {
+              clearInterval(this.timerInterval);
+              this.timerInterval = null;
+            }
+          }
+        });
+      }
+    }
   },
 
   cleanup() {
+    if (typeof TypingGames !== 'undefined' && TypingGames.stop) {
+      TypingGames.stop();
+    }
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
@@ -336,12 +417,22 @@ const TypingTrainer = {
   },
 
   openLessonMap() {
+    if (typeof TypingGames !== 'undefined' && TypingGames.stop) {
+      TypingGames.stop();
+    }
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
     this.viewMode = 'map';
     this.renderSimulator(this.containerEl);
+  },
+
+  setMapFilter(filter) {
+    this.mapFilter = filter === 'games' || filter === 'practice' ? filter : 'all';
+    if (this.viewMode === 'map') {
+      this.renderSimulator(this.containerEl);
+    }
   },
 
   selectLesson(idx) {
@@ -467,10 +558,10 @@ const TypingTrainer = {
     }
   },
 
-  calculateStars(wpm, accuracy) {
+  calculateStars(wpm, accuracy, gameStats = null) {
     const lesson = this.lessons[this.activeLessonIndex] || { targetWpm: 20 };
     const goal = lesson.targetWpm || 20;
-    const platinum = accuracy === 100 && wpm >= goal;
+    const platinum = accuracy === 100 && (wpm >= goal || (gameStats && gameStats.heartsLeft === 5));
 
     let stars = 1;
     if (accuracy >= 98 && wpm >= goal) stars = 5;
@@ -478,7 +569,12 @@ const TypingTrainer = {
     else if (accuracy >= 88 && wpm >= Math.max(8, Math.floor(goal * 0.55))) stars = 3;
     else if (accuracy >= 75) stars = 2;
 
-    const score = Math.max(100, Math.round(accuracy * 18 + wpm * 24 + this.bestStreak * 15 - this.mistakes * 20));
+    if (gameStats && gameStats.heartsLeft >= 5 && accuracy >= 95 && stars < 5) {
+      stars = Math.max(stars, 4);
+    }
+
+    const baseScore = Math.max(100, Math.round(accuracy * 18 + wpm * 24 + this.bestStreak * 15 - this.mistakes * 20));
+    const score = gameStats ? Math.max(baseScore, gameStats.score + accuracy * 10) : baseScore;
     return { stars, platinum, score };
   },
 
@@ -553,8 +649,8 @@ const TypingTrainer = {
     if (code === 'ShiftLeft') return { x: -16, y: 18 };
     if (code === 'ShiftRight') return { x: 24, y: 18 };
 
-    const innerLeft = { Digit5: { x: 24, y: -36 }, KeyT: { x: 22, y: -20 }, KeyG: { x: 24, y: -4 }, KeyB: { x: 24, y: 18 } };
-    const innerRight = { Digit6: { x: -24, y: -36 }, KeyY: { x: -22, y: -20 }, KeyH: { x: -24, y: -4 }, KeyN: { x: -24, y: 18 } };
+    const innerLeft = { Digit5: { x: 22, y: -34 }, KeyT: { x: 20, y: -20 }, KeyG: { x: 24, y: -4 }, KeyB: { x: 24, y: 18 } };
+    const innerRight = { Digit6: { x: -22, y: -34 }, KeyY: { x: -20, y: -20 }, KeyH: { x: -24, y: -4 }, KeyN: { x: -24, y: 18 } };
     if (innerLeft[code]) return innerLeft[code];
     if (innerRight[code]) return innerRight[code];
 
@@ -562,9 +658,9 @@ const TypingTrainer = {
     const topRow = ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'BracketLeft', 'BracketRight'];
     const bottomRow = ['KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyM', 'Comma', 'Period', 'Slash'];
 
-    if (numRow.includes(code)) return { x: 0, y: -36 };
-    if (topRow.includes(code)) return { x: -6, y: -20 };
-    if (bottomRow.includes(code)) return { x: 6, y: 18 };
+    if (numRow.includes(code)) return { x: 0, y: -34 };
+    if (topRow.includes(code)) return { x: -5, y: -20 };
+    if (bottomRow.includes(code)) return { x: 5, y: 18 };
     return { x: 0, y: -5 };
   },
 
@@ -636,8 +732,14 @@ const TypingTrainer = {
       const s = this.elapsedSeconds % 60;
       timeEl.textContent = `⏱️ ${m}:${s < 10 ? '0' : ''}${s}`;
     }
-    if (progressEl && this.targetText.length > 0) {
-      const pct = Math.round((this.currentIndex / this.targetText.length) * 100);
+    if (progressEl) {
+      const lesson = this.lessons[this.activeLessonIndex];
+      let pct = 0;
+      if (this.isGameLesson(lesson) && typeof TypingGames !== 'undefined' && TypingGames.goal > 0) {
+        pct = Math.min(100, Math.round((TypingGames.cleared / TypingGames.goal) * 100));
+      } else if (this.targetText.length > 0) {
+        pct = Math.round((this.currentIndex / this.targetText.length) * 100);
+      }
       progressEl.style.width = `${pct}%`;
     }
   },
@@ -673,6 +775,17 @@ const TypingTrainer = {
         if (e.preventDefault) e.preventDefault();
         this.nextLesson();
       }
+      return;
+    }
+
+    const lesson = this.lessons[this.activeLessonIndex];
+    if (this.isGameLesson(lesson) && typeof TypingGames !== 'undefined' && TypingGames.active) {
+      if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) {
+        this.highlightPhysicalKey(e.code, true);
+        setTimeout(() => this.highlightPhysicalKey(e.code, false), 140);
+        return;
+      }
+      TypingGames.handleKey(e);
       return;
     }
 
@@ -758,8 +871,11 @@ const TypingTrainer = {
     }
   },
 
-  finishLesson() {
+  finishLesson(gameStats = null) {
     this.isFinished = true;
+    if (typeof TypingGames !== 'undefined' && TypingGames.stop) {
+      TypingGames.stop();
+    }
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
@@ -767,8 +883,8 @@ const TypingTrainer = {
 
     const duration = Math.max(1, this.elapsedSeconds);
     const accuracy = this.calculateAccuracy();
-    const wpm = this.calculateWpm();
-    const rating = this.calculateStars(wpm, accuracy);
+    const wpm = Math.max(this.calculateWpm(), gameStats ? Math.round((this.currentIndex / 5) / Math.max(0.25, duration / 60)) : 0);
+    const rating = this.calculateStars(wpm, accuracy, gameStats);
     const activeStudent = (typeof StorageService !== 'undefined' && StorageService.getActiveStudent)
       ? StorageService.getActiveStudent()
       : null;
@@ -826,7 +942,7 @@ const TypingTrainer = {
           ${starsShowcase}
         </div>
         ${rating.platinum ? '<div class="tc-platinum-pill">💎 PLATINUM 100% ACCURACY</div>' : ''}
-        <h2 class="tc-results-heading">Lesson Complete, ${studentName}!</h2>
+        <h2 class="tc-results-heading">${this.isGameLesson(lesson) ? 'Arcade Victory' : 'Lesson Complete'}, ${studentName}!</h2>
         <p class="tc-results-sub">${lesson.title} • Score: <strong>${rating.score} pts</strong></p>
 
         <div class="tc-rings-row">
@@ -852,7 +968,7 @@ const TypingTrainer = {
         <div class="tc-meta-strip">
           <span class="stat-pill">🔥 Best Streak: ${this.bestStreak}</span>
           <span class="stat-pill">❌ Errors: ${this.mistakes}</span>
-          <span class="stat-pill">⏱️ Time: ${duration}s</span>
+          ${gameStats ? `<span class="stat-pill">❤️ Hearts Left: ${gameStats.heartsLeft}</span>` : `<span class="stat-pill">⏱️ Time: ${duration}s</span>`}
         </div>
 
         <div class="tc-results-actions">
@@ -862,7 +978,7 @@ const TypingTrainer = {
             </button>
           ` : ''}
           <button type="button" class="btn-secondary" onclick="TypingTrainer.init(null, ${this.activeLessonIndex})">
-            <span>↺ Try Again</span>
+            <span>↺ Play Again</span>
           </button>
           <button type="button" class="btn-secondary" onclick="TypingTrainer.openLessonMap()">
             <span>☰ Lessons Map</span>
@@ -880,6 +996,8 @@ const TypingTrainer = {
     const progressMap = this.loadLessonProgress();
     const totalStarsEarned = this.lessons.reduce((sum, l) => sum + ((progressMap[l.id] && progressMap[l.id].stars) || 0), 0);
     const maxStars = this.lessons.length * 5;
+    const totalGames = this.lessons.filter(l => this.isGameLesson(l)).length;
+    const totalPractice = this.lessons.length - totalGames;
 
     const unitNames = [];
     this.lessons.forEach(l => {
@@ -889,7 +1007,14 @@ const TypingTrainer = {
     const unitsHtml = unitNames.map(unitName => {
       const unitLessons = this.lessons
         .map((lesson, idx) => ({ lesson, idx }))
-        .filter(item => item.lesson.unit === unitName);
+        .filter(item => item.lesson.unit === unitName)
+        .filter(item => {
+          if (this.mapFilter === 'games') return this.isGameLesson(item.lesson);
+          if (this.mapFilter === 'practice') return !this.isGameLesson(item.lesson);
+          return true;
+        });
+
+      if (unitLessons.length === 0) return '';
 
       const completedInUnit = unitLessons.filter(item => progressMap[item.lesson.id] && progressMap[item.lesson.id].stars > 0).length;
 
@@ -905,15 +1030,16 @@ const TypingTrainer = {
               const stars = p ? (p.stars || 0) : 0;
               const isCurrent = idx === this.activeLessonIndex;
               const isCompleted = stars > 0;
+              const isGame = this.isGameLesson(lesson);
               return `
                 <button
                   type="button"
-                  class="tc-lesson-tile ${isCompleted ? 'is-completed' : ''} ${isCurrent ? 'is-current' : ''}"
+                  class="tc-lesson-tile ${isGame ? 'is-game' : ''} ${isCompleted ? 'is-completed' : ''} ${isCurrent ? 'is-current' : ''}"
                   onclick="TypingTrainer.selectLesson(${idx})"
                 >
                   <div class="tc-tile-top">
                     <span class="tc-tile-num">#${String(idx + 1).padStart(2, '0')}</span>
-                    <span class="tc-tile-badge">${lesson.badge}</span>
+                    <span class="tc-tile-badge ${isGame ? 'badge-game' : ''}">${lesson.badge}</span>
                   </div>
                   <div class="tc-tile-keys">${lesson.keysBadge}</div>
                   <div class="tc-tile-title">${lesson.title.replace(/^\d+\.\s*/, '')}</div>
@@ -934,10 +1060,17 @@ const TypingTrainer = {
         <div class="tc-map-header">
           <div>
             <h2 class="tc-map-title">🌴 Typing Jungle • Canada Edition (20 Lessons)</h2>
-            <p class="tc-map-sub">Click any lesson tile to practice touch typing, earn 5 stars, and master Canadian digital skills.</p>
+            <p class="tc-map-sub">Interactive lessons & arcade typing games starting right at Lesson 4!</p>
           </div>
-          <div class="tc-course-meter">
-            <span>★ ${totalStarsEarned} / ${maxStars} Stars</span>
+          <div class="tc-map-header-right">
+            <div class="tc-map-filters" role="tablist" aria-label="Filter lessons">
+              <button type="button" class="tc-filter-btn ${this.mapFilter === 'all' ? 'active' : ''}" onclick="TypingTrainer.setMapFilter('all')">All (${this.lessons.length})</button>
+              <button type="button" class="tc-filter-btn ${this.mapFilter === 'games' ? 'active' : ''}" onclick="TypingTrainer.setMapFilter('games')">🎮 Games (${totalGames})</button>
+              <button type="button" class="tc-filter-btn ${this.mapFilter === 'practice' ? 'active' : ''}" onclick="TypingTrainer.setMapFilter('practice')">⌨️ Drills (${totalPractice})</button>
+            </div>
+            <div class="tc-course-meter">
+              <span>★ ${totalStarsEarned} / ${maxStars}</span>
+            </div>
           </div>
         </div>
         ${unitsHtml}
@@ -951,6 +1084,7 @@ const TypingTrainer = {
     this.containerEl = parent;
 
     const lesson = this.lessons[this.activeLessonIndex];
+    const isGame = this.isGameLesson(lesson);
     const keysTagsHtml = (lesson.keysList || [])
       .map(k => `<span class="tc-keycap-tag">${k}</span>`)
       .join(' ');
@@ -966,10 +1100,10 @@ const TypingTrainer = {
               class="tc-nav-map-btn ${this.viewMode === 'map' ? 'active' : ''}"
               onclick="${this.viewMode === 'map' ? `TypingTrainer.selectLesson(${this.activeLessonIndex})` : 'TypingTrainer.openLessonMap()'}"
             >
-              <span>${this.viewMode === 'map' ? '⌨️ Back to Practice' : '☰ Lessons'}</span>
+              <span>${this.viewMode === 'map' ? '⌨️ Back to Lesson' : '☰ Lessons'}</span>
             </button>
 
-            <div class="tc-lesson-badge">
+            <div class="tc-lesson-badge ${isGame ? 'is-game-pill' : ''}">
               <span class="tc-lesson-badge-num">Lesson ${this.activeLessonIndex + 1}/${this.lessons.length}</span>
               <span>${lesson.title.replace(/^\d+\.\s*/, '')}</span>
             </div>
@@ -1018,10 +1152,9 @@ const TypingTrainer = {
 
         ${this.viewMode === 'map' ? this.renderLessonMapHtml() : `
           <div id="typing-simulator-container" class="tc-stage-card ${!this.showHands ? 'tc-hands-hidden' : ''} ${!this.showKeyboard ? 'tc-kbd-hidden' : ''}">
-            <!-- Lesson Focus Strip -->
             <div class="tc-intro-strip">
               <div class="tc-intro-keys">
-                <span>Focus Keys:</span>
+                <span>${isGame ? 'Arcade Keys:' : 'Focus Keys:'}</span>
                 ${keysTagsHtml}
                 <span>• ${lesson.description}</span>
               </div>
@@ -1031,12 +1164,13 @@ const TypingTrainer = {
               </div>
             </div>
 
-            <!-- White Typing Canvas -->
-            <div class="typing-prompt-wrapper" id="typing-prompt-box">
-              <div id="typing-prompt-inner" class="typing-prompt-inner"></div>
-            </div>
+            ${isGame ? '<div id="typing-game-slot"></div>' : `
+              <div class="typing-prompt-wrapper" id="typing-prompt-box">
+                <div id="typing-prompt-inner" class="typing-prompt-inner"></div>
+              </div>
+            `}
 
-            <!-- White Keyboard + Overlaid Translucent SVG Hands -->
+            <!-- White Keyboard + Natural Overlaid Bezier SVG Hands -->
             <div class="virtual-keyboard-container">
               <div class="tc-keyboard-stage">
                 ${this.renderVirtualKeyboardHtml()}
@@ -1051,8 +1185,10 @@ const TypingTrainer = {
 
     this.syncFullscreenUI();
     if (this.viewMode === 'practice') {
-      this.renderPromptText();
-      this.updateActiveKeyHighlight();
+      if (!isGame) {
+        this.renderPromptText();
+        this.updateActiveKeyHighlight();
+      }
       this.updateStatsUI();
     }
   },
@@ -1094,6 +1230,14 @@ const TypingTrainer = {
   },
 
   updateActiveKeyHighlight() {
+    if (this.currentIndex >= this.targetText.length) {
+      this.highlightTargetChar('');
+      return;
+    }
+    this.highlightTargetChar(this.targetText[this.currentIndex]);
+  },
+
+  highlightTargetChar(char) {
     document.querySelectorAll('.v-key-target').forEach(el => el.classList.remove('v-key-target'));
     document.querySelectorAll('.v-key-shift-required').forEach(el => el.classList.remove('v-key-shift-required'));
     document.querySelectorAll('.hand-finger').forEach(el => {
@@ -1102,11 +1246,13 @@ const TypingTrainer = {
       this.setFingerReach(el, 0, 0);
     });
 
-    if (this.currentIndex >= this.targetText.length) return;
+    if (!char) {
+      const fingerDisplay = document.getElementById('finger-name-display');
+      if (fingerDisplay) fingerDisplay.textContent = '-';
+      return;
+    }
 
-    const char = this.targetText[this.currentIndex];
     const details = this.getFingerDetails(char);
-
     const fingerDisplay = document.getElementById('finger-name-display');
     if (fingerDisplay) {
       fingerDisplay.textContent = details.action;
@@ -1139,29 +1285,99 @@ const TypingTrainer = {
     }
   },
 
+  buildNaturalHandSvg(isRight) {
+    const mx = (x) => (isRight ? 760 - x : x);
+    const palmPath = [
+      `M ${mx(102)} 206`,
+      `C ${mx(96)} 178, ${mx(84)} 158, ${mx(74)} 138`,
+      `C ${mx(70)} 124, ${mx(72)} 114, ${mx(88)} 112`,
+      `Q ${mx(110)} 104, ${mx(130)} 102`,
+      `Q ${mx(176)} 96, ${mx(224)} 102`,
+      `C ${mx(244)} 106, ${mx(260)} 122, ${mx(268)} 146`,
+      `C ${mx(262)} 168, ${mx(240)} 178, ${mx(222)} 188`,
+      `L ${mx(216)} 206 Z`
+    ].join(' ');
+
+    const fingers = [
+      {
+        code: 'f-lp',
+        body: `M ${mx(74)} 116 C ${mx(68)} 92, ${mx(65)} 70, ${mx(64)} 54 C ${mx(64)} 43, ${mx(82)} 41, ${mx(85)} 52 C ${mx(88)} 70, ${mx(92)} 92, ${mx(96)} 114 Q ${mx(85)} 118 ${mx(74)} 116 Z`,
+        nail: `M ${mx(67)} 55 C ${mx(66)} 46, ${mx(79)} 45, ${mx(81)} 54 C ${mx(80)} 60, ${mx(68)} 60, ${mx(67)} 55 Z`,
+        crease: `M ${mx(70)} 76 Q ${mx(77)} 78 ${mx(84)} 75 M ${mx(73)} 94 Q ${mx(82)} 96 ${mx(90)} 93`,
+        gx: mx(74),
+        gy: 52
+      },
+      {
+        code: 'f-lr',
+        body: `M ${mx(116)} 106 C ${mx(114)} 76, ${mx(112)} 48, ${mx(112)} 31 C ${mx(112)} 19, ${mx(134)} 19, ${mx(135)} 31 C ${mx(136)} 48, ${mx(138)} 76, ${mx(140)} 104 Q ${mx(128)} 109 ${mx(116)} 106 Z`,
+        nail: `M ${mx(116)} 33 C ${mx(116)} 23, ${mx(130)} 23, ${mx(131)} 33 C ${mx(130)} 39, ${mx(117)} 39, ${mx(116)} 33 Z`,
+        crease: `M ${mx(116)} 56 Q ${mx(124)} 58 ${mx(132)} 56 M ${mx(116)} 79 Q ${mx(126)} 81 ${mx(135)} 79`,
+        gx: mx(123),
+        gy: 30
+      },
+      {
+        code: 'f-lm',
+        body: `M ${mx(163)} 102 C ${mx(163)} 70, ${mx(164)} 40, ${mx(165)} 20 C ${mx(165)} 7, ${mx(187)} 7, ${mx(187)} 20 C ${mx(188)} 40, ${mx(188)} 70, ${mx(189)} 102 Q ${mx(176)} 107 ${mx(163)} 102 Z`,
+        nail: `M ${mx(169)} 22 C ${mx(169)} 12, ${mx(183)} 12, ${mx(183)} 22 C ${mx(183)} 28, ${mx(169)} 28, ${mx(169)} 22 Z`,
+        crease: `M ${mx(167)} 48 Q ${mx(176)} 50 ${mx(185)} 48 M ${mx(166)} 74 Q ${mx(176)} 76 ${mx(186)} 74`,
+        gx: mx(176),
+        gy: 19
+      },
+      {
+        code: 'f-li',
+        body: `M ${mx(214)} 106 C ${mx(216)} 76, ${mx(218)} 50, ${mx(220)} 34 C ${mx(221)} 21, ${mx(243)} 22, ${mx(242)} 35 C ${mx(241)} 52, ${mx(240)} 78, ${mx(239)} 108 Q ${mx(226)} 111 ${mx(214)} 106 Z`,
+        nail: `M ${mx(224)} 35 C ${mx(225)} 26, ${mx(238)} 26, ${mx(238)} 36 C ${mx(237)} 42, ${mx(224)} 41, ${mx(224)} 35 Z`,
+        crease: `M ${mx(219)} 58 Q ${mx(229)} 60 ${mx(238)} 58 M ${mx(217)} 81 Q ${mx(228)} 83 ${mx(238)} 81`,
+        gx: mx(231),
+        gy: 33
+      },
+      {
+        code: 'f-thumb',
+        body: `M ${mx(238)} 166 C ${mx(258)} 164, ${mx(282)} 152, ${mx(304)} 136 C ${mx(318)} 126, ${mx(308)} 108, ${mx(292)} 116 C ${mx(272)} 126, ${mx(256)} 132, ${mx(244)} 136 Q ${mx(238)} 150 ${mx(238)} 166 Z`,
+        nail: `M ${mx(290)} 120 C ${mx(299)} 114, ${mx(308)} 121, ${mx(300)} 129 C ${mx(295)} 133, ${mx(287)} 126, ${mx(290)} 120 Z`,
+        crease: `M ${mx(264)} 134 Q ${mx(272)} 142 ${mx(277)} 149`,
+        gx: mx(300),
+        gy: 123
+      }
+    ];
+
+    const rightCodeMap = { 'f-lp': 'f-rp', 'f-lr': 'f-rr', 'f-lm': 'f-rm', 'f-li': 'f-ri', 'f-thumb': 'f-thumb' };
+
+    return `
+      <g id="${isRight ? 'svg-right-hand' : 'svg-left-hand'}">
+        <path class="hand-palm" d="${palmPath}" />
+        ${fingers.map(f => {
+          const code = isRight ? rightCodeMap[f.code] : f.code;
+          return `
+            <g class="hand-finger ${code}" data-finger="${code}">
+              <path class="finger-body" d="${f.body}" />
+              <path class="finger-crease" d="${f.crease}" />
+              <path class="finger-nail" d="${f.nail}" />
+              <circle class="finger-tip-glow" cx="${f.gx}" cy="${f.gy}" r="11" />
+            </g>
+          `;
+        }).join('')}
+      </g>
+    `;
+  },
+
   renderHandsGuideHtml() {
     return `
       <div class="tc-hands-overlay" aria-hidden="true">
-        <svg class="hands-svg" viewBox="0 0 720 156" xmlns="http://www.w3.org/2000/svg">
-          <!-- LEFT HAND OVERLAY -->
-          <g id="svg-left-hand">
-            <rect class="hand-palm" x="72" y="92" width="180" height="58" rx="28" />
-            <rect class="hand-finger f-lp" data-finger="f-lp" x="66" y="42" width="24" height="62" rx="12" />
-            <rect class="hand-finger f-lr" data-finger="f-lr" x="116" y="22" width="26" height="78" rx="13" />
-            <rect class="hand-finger f-lm" data-finger="f-lm" x="166" y="12" width="27" height="86" rx="13" />
-            <rect class="hand-finger f-li" data-finger="f-li" x="218" y="24" width="27" height="76" rx="13" />
-            <rect class="hand-finger f-thumb" data-finger="f-thumb" x="266" y="88" width="52" height="25" rx="12" transform="rotate(-16 292 100)" />
-          </g>
-
-          <!-- RIGHT HAND OVERLAY -->
-          <g id="svg-right-hand">
-            <rect class="hand-palm" x="454" y="92" width="180" height="58" rx="28" />
-            <rect class="hand-finger f-thumb" data-finger="f-thumb" x="396" y="88" width="52" height="25" rx="12" transform="rotate(16 422 100)" />
-            <rect class="hand-finger f-ri" data-finger="f-ri" x="452" y="24" width="27" height="76" rx="13" />
-            <rect class="hand-finger f-rm" data-finger="f-rm" x="504" y="12" width="27" height="86" rx="13" />
-            <rect class="hand-finger f-rr" data-finger="f-rr" x="554" y="22" width="26" height="78" rx="13" />
-            <rect class="hand-finger f-rp" data-finger="f-rp" x="604" y="42" width="24" height="62" rx="12" />
-          </g>
+        <svg class="hands-svg" viewBox="0 0 760 210" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="handSkinGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(255, 229, 209, 0.72)" />
+              <stop offset="68%" stop-color="rgba(246, 214, 189, 0.48)" />
+              <stop offset="100%" stop-color="rgba(246, 214, 189, 0)" />
+            </linearGradient>
+            <linearGradient id="fingerSkinGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(255, 236, 222, 0.78)" />
+              <stop offset="100%" stop-color="rgba(248, 218, 196, 0.62)" />
+            </linearGradient>
+          </defs>
+          ${this.buildNaturalHandSvg(false)}
+          ${this.buildNaturalHandSvg(true)}
         </svg>
       </div>
     `;
