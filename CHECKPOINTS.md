@@ -92,6 +92,14 @@
 - [x] **Очищення головної сторінки модулів (`js/app.js`):** у методі `App.renderModulesList()` видалено дублюючий блок `Presentations & Classroom Media Library` (`mediaHubHtml`, включно з окремим гостьовим викликом `.locked-media-callout`), оскільки презентація, відео, документи та гід викладача вже доступні у вкладках усередині самого уроку (`renderLessonView()` / `📂 Files & Media`).
 - [x] **Кеш і верифікація (`index.html`, Node Checks & VM):** версію кешу піднято до `?v=3.3.1`; `node --check js/app.js` та VM-тест підтвердили відсутність дублюючого блоку на головній сторінці (для авторизованих користувачів і гостей) та збереження всіх вкладок усередині модуля (`🖼️ Presentation`, `📂 Files & Media`, `🧑‍🏫 Teacher Guide`).
 
+---
+
+## Чекпойнт 12. Переробка клавіатурного тренажера у стилі TypingClub (`Typing Jungle`)
+- [x] **Програма з 20 послідовних уроків у 5 модулях (`js/typing-trainer.js`):** перебудовано структуру за методикою **Typing Jungle**: Unit 1 (домашній ряд від `F & J`, `D & K`, `S & L`, `A & ;`, `G & H`, фрази), Unit 2 (верхній ряд `E & I`, `R & U`, `T & Y`, `Q W O P`), Unit 3 (нижній ряд та пунктуація), Unit 4 (канадська лексика і `Shift`), Unit 5 (екстрені номери `911/211/311`, поштові коди й e-mail). Додано інтерактивну карту уроків (`openLessonMap()`, `renderLessonMapHtml()`) зі збереженням зірок і найкращого WPM у `localStorage`.
+- [x] **Світлий інтерфейс TypingClub, біла клавіатура та накладені руки (`css/typing-lab.css`, `js/typing-trainer.js`):** світле тло (`#f3f6fa`), компактний верхній тулбар (`.tc-topbar`) із перемикачами `☰ Lessons`, `🔊 Sound`, `👐 Hands`, `⌨️ Keys`, `⛶ Fullscreen`, біле поле вводу зі станами символів (`.t-char-correct`, `.t-char-corrected`, `.t-char-current`, `.t-char-error`), біла клавіатура з рисками на `F`/`J` та напівпрозора SVG-накладка рук (`.tc-hands-overlay`), де активний палець і `Shift`-мізинець тягнуться до цільової клавіші (`getKeyReachOffset()`).
+- [x] **5-зірковий екран завершення та верифікація (`index.html`, Node Checks & VM):** реалізовано картку завершення (`.tc-results-card`) з 1–5 зірками, значком `Platinum 100%` та SVG-кільцями точності й швидкості (`calculateStars()`), а також перехід по `Enter`. Версію кешу піднято до `?v=3.4.0`; `css/typing-lab.css` складає 727 рядків (`< 900`), пройдено `node --check`, `scratch/test_typing_hands.js` (16/16) та повний VM-інтеграційний тест.
+
+
 
 
 
